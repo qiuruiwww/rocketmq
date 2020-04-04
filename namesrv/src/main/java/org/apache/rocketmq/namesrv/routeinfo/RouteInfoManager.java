@@ -49,10 +49,25 @@ public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    /**
+     * topic消息队列路由信息，消息发送时根据路由表进行负载均衡
+     */
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+    /**
+     * broker基础信息，包含name，集群名称，主备地址信息
+     */
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+    /**
+     * broker集群信息，存储集群中所有broker名称
+     */
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    /**
+     * broker状态信息，nameserver每次收到心跳包时会替换掉该信息
+     */
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+    /**
+     * broker上的filterserver列表，用于类模式的消息过滤
+     */
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
@@ -99,6 +114,23 @@ public class RouteInfoManager {
         return topicList.encode();
     }
 
+    /**
+     * clusterAddrTable 维护
+     * brokerAddrTable 维护
+     * brokerLiveTable 更新
+     * filterServerTable 维护
+     * 初次注册topicQueueTable 填充
+     *
+     * @param clusterName
+     * @param brokerAddr
+     * @param brokerName
+     * @param brokerId
+     * @param haServerAddr
+     * @param topicConfigWrapper
+     * @param filterServerList
+     * @param channel
+     * @return
+     */
     public RegisterBrokerResult registerBroker(
         final String clusterName,
         final String brokerAddr,
@@ -111,6 +143,11 @@ public class RouteInfoManager {
         RegisterBrokerResult result = new RegisterBrokerResult();
         try {
             try {
+                /**
+                 * 读写锁经典实用场景
+                 * 允许多个消息发送者并发读，保证了发送时的高并发
+                 * 同一时刻nameserver只处理一个心跳包，多个心跳包请求串行执行
+                 */
                 this.lock.writeLock().lockInterruptibly();
 
                 Set<String> brokerNames = this.clusterAddrTable.get(clusterName);
@@ -142,6 +179,10 @@ public class RouteInfoManager {
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 registerFirst = registerFirst || (null == oldAddr);
 
+                /**
+                 * 如果为master，并且broker topic配置信息发生变化或者是初次注册，则创建或者更新topic路由元数据，填充topicQueueTable
+                 * 为默认主题自动注册路由信息
+                 */
                 if (null != topicConfigWrapper
                     && MixAll.MASTER_ID == brokerId) {
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())
@@ -150,6 +191,9 @@ public class RouteInfoManager {
                             topicConfigWrapper.getTopicConfigTable();
                         if (tcTable != null) {
                             for (Map.Entry<String, TopicConfig> entry : tcTable.entrySet()) {
+                                /**
+                                 * 填充topicQueueTable
+                                 */
                                 this.createAndUpdateQueueData(brokerName, entry.getValue());
                             }
                         }
@@ -371,6 +415,12 @@ public class RouteInfoManager {
         }
     }
 
+    /**
+     * 路由发现的核心方法
+     *
+     * @param topic
+     * @return
+     */
     public TopicRouteData pickupTopicRouteData(final String topic) {
         TopicRouteData topicRouteData = new TopicRouteData();
         boolean foundQueueData = false;
@@ -384,6 +434,9 @@ public class RouteInfoManager {
 
         try {
             try {
+                /**
+                 * 申请读锁，只要是操作路由表都得加锁
+                 */
                 this.lock.readLock().lockInterruptibly();
                 List<QueueData> queueDataList = this.topicQueueTable.get(topic);
                 if (queueDataList != null) {
@@ -426,6 +479,11 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     * 维护路由表的主要方法，有两个地方调用
+     * 1、nameserver每隔10秒扫描一次
+     * 2、broke正常关闭的时候执行
+     */
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -473,6 +531,9 @@ public class RouteInfoManager {
 
             try {
                 try {
+                    /**
+                     * 路由表维护申请写锁
+                     */
                     this.lock.writeLock().lockInterruptibly();
                     this.brokerLiveTable.remove(brokerAddrFound);
                     this.filterServerTable.remove(brokerAddrFound);

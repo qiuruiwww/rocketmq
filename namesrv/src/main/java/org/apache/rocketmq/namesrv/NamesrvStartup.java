@@ -41,6 +41,17 @@ import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.srvutil.ShutdownHookThread;
 import org.slf4j.LoggerFactory;
 
+/**
+ *
+ *
+ * 总结：
+ * 1、broker每隔30秒发送心跳包到nameserver，更新brokerLiveTable路由信息中的lastUpdateTimestamp
+ * 2、nameserver每隔10秒扫描brokerLiveTable，校验表中上次收到心跳的时间是否超过120秒，超过则认为broker不可用，剔除broker相关的路由信息
+ * 3、nameserver不主动给生产者推送更新过的路由信息变化，由生产者定时拉取最新的路由信息
+ * 4、集合遍历都用迭代器的方式，调用迭代器的remove方法
+ *
+ *
+ */
 public class NamesrvStartup {
 
     private static InternalLogger log;
@@ -79,6 +90,9 @@ public class NamesrvStartup {
             return null;
         }
 
+        /**
+         * 解析配置文件，填充nameserverconfig和nettyserverconfig属性值
+         */
         final NamesrvConfig namesrvConfig = new NamesrvConfig();
         final NettyServerConfig nettyServerConfig = new NettyServerConfig();
         nettyServerConfig.setListenPort(9876);
@@ -137,12 +151,19 @@ public class NamesrvStartup {
             throw new IllegalArgumentException("NamesrvController is null");
         }
 
+        /**
+         * 根据启动属性创建nameservercontroller实例，并初始化实例，nameservercontroller是nameserver中的核心控制器
+         */
         boolean initResult = controller.initialize();
         if (!initResult) {
             controller.shutdown();
             System.exit(-3);
         }
 
+        /**
+         * 注册JVM钩子并启动服务器，监听broker和消息生产者的网络请求
+         * 注：如果代码中使用了线程池，一种优雅的停机方式就是注册一个JVM钩子，在JVM进程关闭之前，现将线程池关闭，及时释放资源
+         */
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {

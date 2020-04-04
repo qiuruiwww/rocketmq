@@ -84,6 +84,9 @@ public class NamesrvController {
 
         this.registerProcessor();
 
+        /**
+         * nameserver每隔10秒检测一次broker，移除处于不激活状态的broker
+         */
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -92,6 +95,9 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        /**
+         * nameserver每隔10分钟打印一次kv配置
+         */
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

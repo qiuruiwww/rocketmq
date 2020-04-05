@@ -26,8 +26,18 @@ public class Message implements Serializable {
     private static final long serialVersionUID = 8445773977080406428L;
 
     private String topic;
+    /**
+     * 消息flag
+     */
     private int flag;
+    /**
+     * 扩展属性
+     * 包括：消息tags、message索引键、是否等消息存储完再返回、消息延迟级别
+     */
     private Map<String, String> properties;
+    /**
+     * 消息体
+     */
     private byte[] body;
     private String transactionId;
 

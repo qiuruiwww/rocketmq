@@ -26,6 +26,10 @@ public class MQFaultStrategy {
     private final static InternalLogger log = ClientLogger.getLog();
     private final LatencyFaultTolerance<String> latencyFaultTolerance = new LatencyFaultToleranceImpl();
 
+    /**
+     * 故障延迟策略，默认不启用broker故障延迟策略
+     * 一次消息发送失败后，将该broker排除在选择范围之外
+     */
     private boolean sendLatencyFaultEnable = false;
 
     private long[] latencyMax = {50L, 100L, 550L, 1000L, 2000L, 3000L, 15000L};
@@ -55,7 +59,15 @@ public class MQFaultStrategy {
         this.sendLatencyFaultEnable = sendLatencyFaultEnable;
     }
 
+    /**
+     * 选择消息队列，规避上一次发送失败的broker，不然还可能是失败
+     *
+     * @param tpInfo
+     * @param lastBrokerName 上一次选择的执行发送失败的broker
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
+        //判断故障延迟策略是否开启，默认不开启
         if (this.sendLatencyFaultEnable) {
             try {
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
@@ -92,8 +104,18 @@ public class MQFaultStrategy {
         return tpInfo.selectOneMessageQueue(lastBrokerName);
     }
 
+    /**
+     * 更新失败条目
+     *
+     * @param brokerName
+     * @param currentLatency
+     * @param isolation 是否隔离  为使用true则使用默认30秒来隔离
+     */
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         if (this.sendLatencyFaultEnable) {
+            /**
+             * 计算broker的规避时长
+             */
             long duration = computeNotAvailableDuration(isolation ? 30000 : currentLatency);
             this.latencyFaultTolerance.updateFaultItem(brokerName, currentLatency, duration);
         }

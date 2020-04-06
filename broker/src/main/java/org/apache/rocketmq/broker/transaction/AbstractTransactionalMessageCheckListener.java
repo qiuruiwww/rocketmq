@@ -77,6 +77,11 @@ public abstract class AbstractTransactionalMessageCheckListener {
         }
     }
 
+    /**
+     * 异步发送事务回查请求，回查进度向前对接，回查成功会将消息队列写入已经处理队列，供下次回查判断是否重复回查
+     *
+     * @param msgExt
+     */
     public void resolveHalfMsg(final MessageExt msgExt) {
         executorService.execute(new Runnable() {
             @Override

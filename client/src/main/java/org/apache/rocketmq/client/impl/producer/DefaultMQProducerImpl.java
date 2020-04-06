@@ -314,6 +314,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         return null;
     }
 
+    /**
+     * 异步执行事务回查操作，放入线程池中执行
+     *
+     * @param addr
+     * @param msg
+     * @param header
+     */
     @Override
     public void checkTransactionState(final String addr, final MessageExt msg,
         final CheckTransactionStateRequestHeader header) {
@@ -335,6 +342,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             localTransactionState = transactionCheckListener.checkLocalTransactionState(message);
                         } else if (transactionListener != null) {
                             log.debug("Used new check API in transaction message");
+                            /**
+                             *
+                             *
+                             * 执行自己实现的回查逻辑
+                             *
+                             *
+                             */
                             localTransactionState = transactionListener.checkLocalTransaction(message);
                         } else {
                             log.warn("CheckTransactionState, pick transactionListener by group[{}] failed", group);
@@ -344,6 +358,9 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         exception = e;
                     }
 
+                    /**
+                     * 根据回查状态执行提交、回滚或者不做任何操作
+                     */
                     this.processTransactionState(
                         localTransactionState,
                         group,
@@ -353,6 +370,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 }
             }
 
+            /**
+             * 根据回查状态执行提交、回滚或者不做任何操作
+             *
+             * @param localTransactionState
+             * @param producerGroup
+             * @param exception
+             */
             private void processTransactionState(
                 final LocalTransactionState localTransactionState,
                 final String producerGroup,
@@ -811,7 +835,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
                 final String tranMsg = msg.getProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED);
                 /**
-                 * 设置事务消息系统标记
+                 * 设置事务消息系统标记,方便消息服务器正确识别事务消息
                  */
                 if (tranMsg != null && Boolean.parseBoolean(tranMsg)) {
                     sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;
@@ -1271,6 +1295,15 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
     }
 
+    /**
+     * 发送事务消息
+     *
+     * @param msg
+     * @param localTransactionExecuter
+     * @param arg
+     * @return
+     * @throws MQClientException
+     */
     public TransactionSendResult sendMessageInTransaction(final Message msg,
         final LocalTransactionExecuter localTransactionExecuter, final Object arg)
         throws MQClientException {
@@ -1284,12 +1317,21 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             MessageAccessor.clearProperty(msg, MessageConst.PROPERTY_DELAY_TIME_LEVEL);
         }
 
+        /**
+         * 校验消息是否符合规范
+         */
         Validators.checkMessage(msg, this.defaultMQProducer);
 
         SendResult sendResult = null;
+        /**
+         * 为消息添加属性，表示消息为prepare消息
+         */
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_PREPARED, "true");
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_PRODUCER_GROUP, this.defaultMQProducer.getProducerGroup());
         try {
+            /**
+             * 发送消息，发送同步消息，调用的就是发送同步发送消息的方法
+             */
             sendResult = this.send(msg);
         } catch (Exception e) {
             throw new MQClientException("send message Exception", e);
@@ -1311,6 +1353,9 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         localTransactionState = localTransactionExecuter.executeLocalTransactionBranch(msg, arg);
                     } else if (transactionListener != null) {
                         log.debug("Used new transaction API");
+                        /**
+                         * 执行本地事务，记录本地事务状态，该方法与业务代码同处于一个事务，为后续事务回查提供唯一依据
+                         */
                         localTransactionState = transactionListener.executeLocalTransaction(msg, arg);
                     }
                     if (null == localTransactionState) {
@@ -1338,6 +1383,9 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
 
         try {
+            /**
+             * 结束事务，根据返回的事务状态执行提交、回滚或者暂时不处理事务（提交或者回滚事务）
+             */
             this.endTransaction(sendResult, localTransactionState, localException);
         } catch (Exception e) {
             log.warn("local transaction execute " + localTransactionState + ", but end broker transaction failed", e);
@@ -1361,6 +1409,17 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         return send(msg, this.defaultMQProducer.getSendMsgTimeout());
     }
 
+    /**
+     * 结束事务，根据返回的事务状态执行提交、回滚或者暂时不处理事务
+     *
+     * @param sendResult
+     * @param localTransactionState
+     * @param localException
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     * @throws UnknownHostException
+     */
     public void endTransaction(
         final SendResult sendResult,
         final LocalTransactionState localTransactionState,

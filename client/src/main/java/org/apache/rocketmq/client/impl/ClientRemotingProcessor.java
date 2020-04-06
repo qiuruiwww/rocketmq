@@ -69,6 +69,9 @@ public class ClientRemotingProcessor extends AsyncNettyRequestProcessor implemen
         RemotingCommand request) throws RemotingCommandException {
         switch (request.getCode()) {
             case RequestCode.CHECK_TRANSACTION_STATE:
+                /**
+                 * 事务回查请求
+                 */
                 return this.checkTransactionState(ctx, request);
             case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
                 return this.notifyConsumerIdsChanged(ctx, request);
@@ -96,6 +99,14 @@ public class ClientRemotingProcessor extends AsyncNettyRequestProcessor implemen
         return false;
     }
 
+    /**
+     * 事务回查请求
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand checkTransactionState(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
         final CheckTransactionStateRequestHeader requestHeader =
@@ -113,9 +124,15 @@ public class ClientRemotingProcessor extends AsyncNettyRequestProcessor implemen
             }
             final String group = messageExt.getProperty(MessageConst.PROPERTY_PRODUCER_GROUP);
             if (group != null) {
+                /**
+                 * 从生产者组选择一个生产者发送事务回查请求
+                 */
                 MQProducerInner producer = this.mqClientFactory.selectProducer(group);
                 if (producer != null) {
                     final String addr = RemotingHelper.parseChannelRemoteAddr(ctx.channel());
+                    /**
+                     * 异步执行事务回查操作，放入线程池中执行
+                     */
                     producer.checkTransactionState(addr, messageExt, requestHeader);
                 } else {
                     log.debug("checkTransactionState, pick producer by group[{}] failed", group);

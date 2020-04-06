@@ -50,6 +50,9 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     private static final int PULL_MSG_RETRY_NUMBER = 1;
 
+    /**
+     * 一次事务回查最大用时
+     */
     private static final int MAX_PROCESS_TIME_LIMIT = 60000;
 
     private static final int MAX_RETRY_COUNT_WHEN_HALF_NULL = 1;
@@ -97,6 +100,13 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
         return false;
     }
 
+    /**
+     * 如果需要发送事务回查消息，则现将消息发送到预处理队列主题中
+     *
+     * @param msgExt
+     * @param offset
+     * @return
+     */
     private boolean putBackHalfMsgQueue(MessageExt msgExt, long offset) {
         PutMessageResult putMessageResult = putBackToHalfQueueReturnResult(msgExt);
         if (putMessageResult != null
@@ -123,6 +133,15 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
         }
     }
 
+    /**
+     * 事务消息状态回查
+     *
+     * @param transactionTimeout The minimum time of the transactional message to be checked firstly, one message only
+     * exceed this time interval that can be checked.
+     * @param transactionCheckMax The maximum number of times the message was checked, if exceed this value, this
+     * message will be discarded.
+     * @param listener When the message is considered to be checked or discarded, the relative method of this class will
+     */
     @Override
     public void check(long transactionTimeout, int transactionCheckMax,
         AbstractTransactionalMessageCheckListener listener) {
@@ -136,6 +155,9 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
             log.debug("Check topic={}, queues={}", topic, msgQueues);
             for (MessageQueue messageQueue : msgQueues) {
                 long startTime = System.currentTimeMillis();
+                /**
+                 * 获取已经处理过的消息
+                 */
                 MessageQueue opQueue = getOpQueue(messageQueue);
                 long halfOffset = transactionalMessageBridge.fetchConsumeOffset(messageQueue);
                 long opOffset = transactionalMessageBridge.fetchConsumeOffset(opQueue);
@@ -148,6 +170,9 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
                 List<Long> doneOpOffset = new ArrayList<>();
                 HashMap<Long, Long> removeMap = new HashMap<>();
+                /**
+                 * 根据当前的处理进度依次从已经处理的队列中拉取32条消息，方便判断当前处理的消息是否已经处理过，如果处理过则不需要再次发送事务状态回查请求，避免重复
+                 */
                 PullResult pullResult = fillOpRemoveMap(removeMap, opQueue, opOffset, halfOffset, doneOpOffset);
                 if (null == pullResult) {
                     log.error("The queue={} check msgOffset={} with opOffset={} failed, pullResult is null",
@@ -155,19 +180,37 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                     continue;
                 }
                 // single thread
+                /**
+                 * 获取空消息次数
+                 */
                 int getMessageNullCount = 1;
+                /**
+                 * 当前处理预处理队列的最新进度
+                 */
                 long newOffset = halfOffset;
+                /**
+                 * 当前处理队列消息的偏移量
+                 */
                 long i = halfOffset;
                 while (true) {
+                    /**
+                     * 为任务处理分配固定时长，超过时长则等待下次任务调度
+                     */
                     if (System.currentTimeMillis() - startTime > MAX_PROCESS_TIME_LIMIT) {
                         log.info("Queue={} process time reach max={}", messageQueue, MAX_PROCESS_TIME_LIMIT);
                         break;
                     }
+                    /**
+                     * 如果该队列已经被处理，继续下一条
+                     */
                     if (removeMap.containsKey(i)) {
                         log.info("Half offset {} has been committed/rolled back", i);
                         Long removedOpOffset = removeMap.remove(i);
                         doneOpOffset.add(removedOpOffset);
                     } else {
+                        /**
+                         * 根据消息队列偏移量从消息队列获取消息
+                         */
                         GetResult getResult = getHalfMsg(messageQueue, i);
                         MessageExt msgExt = getResult.getMsg();
                         if (msgExt == null) {
@@ -187,6 +230,9 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                             }
                         }
 
+                        /**
+                         * 判断消息是否需要丢弃或者跳过
+                         */
                         if (needDiscard(msgExt, transactionCheckMax) || needSkip(msgExt)) {
                             listener.resolveDiscardMsg(msgExt);
                             newOffset = i + 1;
@@ -199,8 +245,17 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                             break;
                         }
 
+                        /**
+                         * 消息存储的时间
+                         */
                         long valueOfCurrentMinusBorn = System.currentTimeMillis() - msgExt.getBornTimestamp();
+                        /**
+                         * 立即检测事务消息的时间，这段时间内不应该向应用程序发起事务回查请求
+                         */
                         long checkImmunityTime = transactionTimeout;
+                        /**
+                         * 事务消息过期的时间属性
+                         */
                         String checkImmunityTimeStr = msgExt.getUserProperty(MessageConst.PROPERTY_CHECK_IMMUNITY_TIME_IN_SECONDS);
                         if (null != checkImmunityTimeStr) {
                             checkImmunityTime = getImmunityTime(checkImmunityTimeStr, transactionTimeout);
@@ -219,16 +274,28 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                             }
                         }
                         List<MessageExt> opMsg = pullResult.getMsgFoundList();
+                        /**
+                         * 判断是否需要事务回查消息
+                         */
                         boolean isNeedCheck = (opMsg == null && valueOfCurrentMinusBorn > checkImmunityTime)
                             || (opMsg != null && (opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime > transactionTimeout))
                             || (valueOfCurrentMinusBorn <= -1);
 
                         if (isNeedCheck) {
+                            /**
+                             * 如果需要发送事务回查消息，则现将消息发送到预处理队列主题中
+                             */
                             if (!putBackHalfMsgQueue(msgExt, i)) {
                                 continue;
                             }
+                            /**
+                             * 异步发送事务回查请求，回查进度向前对接，回查成功会将消息队列写入已经处理队列，供下次回查判断是否重复回查
+                             */
                             listener.resolveHalfMsg(msgExt);
                         } else {
+                            /**
+                             * 如果无法判断是否需要回查消息，则加载更多的已经处理的消息进行筛选
+                             */
                             pullResult = fillOpRemoveMap(removeMap, opQueue, pullResult.getNextBeginOffset(), halfOffset, doneOpOffset);
                             log.debug("The miss offset:{} in messageQueue:{} need to get more opMsg, result is:{}", i,
                                 messageQueue, pullResult);
@@ -239,10 +306,16 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                     i++;
                 }
                 if (newOffset != halfOffset) {
+                    /**
+                     * 保存消息队列的回查进度
+                     */
                     transactionalMessageBridge.updateConsumeOffset(messageQueue, newOffset);
                 }
                 long newOpOffset = calculateOpOffset(doneOpOffset, opOffset);
                 if (newOpOffset != opOffset) {
+                    /**
+                     * 保存已经处理队列的进度
+                     */
                     transactionalMessageBridge.updateConsumeOffset(opQueue, newOpOffset);
                 }
             }
@@ -266,6 +339,8 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     /**
      * Read op message, parse op message, and fill removeMap
+     *
+     * 根据当前的处理进度依次从已经处理的队列中拉取32条消息，方便判断当前处理的消息是否已经处理过，如果处理过则不需要再次发送事务状态回查请求，避免重复
      *
      * @param removeMap Half message to be remove, key:halfOffset, value: opOffset.
      * @param opQueue Op message queue.
@@ -437,6 +512,13 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     }
 
+    /**
+     * 根据消息队列偏移量从消息队列获取消息
+     *
+     * @param messageQueue
+     * @param offset
+     * @return
+     */
     private GetResult getHalfMsg(MessageQueue messageQueue, long offset) {
         GetResult getResult = new GetResult();
 

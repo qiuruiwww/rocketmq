@@ -200,6 +200,11 @@ public class TransactionalMessageBridge {
         return store.asyncPutMessage(parseHalfMessageInner(messageInner));
     }
 
+    /**
+     * 将未提交的消息存储到topic为RMQ_SYS_TRANS_HALF_TOPIC ，队列为0的消息队列，不会存储到原消息队列，消息服务器采用定时任务消费RMQ_SYS_TRANS_HALF_TOPIC 队列数据
+     * @param msgInner
+     * @return
+     */
     private MessageExtBrokerInner parseHalfMessageInner(MessageExtBrokerInner msgInner) {
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_TOPIC, msgInner.getTopic());
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_QUEUE_ID,

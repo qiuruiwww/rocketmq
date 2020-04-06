@@ -65,6 +65,9 @@ public class EndTransactionProcessor extends AsyncNettyRequestProcessor implemen
 
         if (requestHeader.getFromTransactionCheck()) {
             switch (requestHeader.getCommitOrRollback()) {
+                /**
+                 * UNKNOW，不作为
+                 */
                 case MessageSysFlag.TRANSACTION_NOT_TYPE: {
                     LOGGER.warn("Check producer[{}] transaction state, but it's pending status."
                             + "RequestHeader: {} Remark: {}",
@@ -123,30 +126,54 @@ public class EndTransactionProcessor extends AsyncNettyRequestProcessor implemen
             }
         }
         OperationResult result = new OperationResult();
+        /**
+         * 事务提交
+         */
         if (MessageSysFlag.TRANSACTION_COMMIT_TYPE == requestHeader.getCommitOrRollback()) {
+            /**
+             * 获取消息的物理偏移量
+             */
             result = this.brokerController.getTransactionalMessageService().commitMessage(requestHeader);
             if (result.getResponseCode() == ResponseCode.SUCCESS) {
                 RemotingCommand res = checkPrepareMessage(result.getPrepareMessage(), requestHeader);
                 if (res.getCode() == ResponseCode.SUCCESS) {
+                    /**
+                     * 恢复消息的主题，消息队列，构建新的消息对象
+                     */
                     MessageExtBrokerInner msgInner = endMessageTransaction(result.getPrepareMessage());
                     msgInner.setSysFlag(MessageSysFlag.resetTransactionValue(msgInner.getSysFlag(), requestHeader.getCommitOrRollback()));
                     msgInner.setQueueOffset(requestHeader.getTranStateTableOffset());
                     msgInner.setPreparedTransactionOffset(requestHeader.getCommitLogOffset());
                     msgInner.setStoreTimestamp(result.getPrepareMessage().getStoreTimestamp());
                     MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_TRANSACTION_PREPARED);
+                    /**
+                     * 将消息再次存储到用户自己的消息队列和主题中，存储到commitlog文件中
+                     */
                     RemotingCommand sendResult = sendFinalMessage(msgInner);
                     if (sendResult.getCode() == ResponseCode.SUCCESS) {
+                        /**
+                         * 删除预处理消息,并非真正的删除，存到另外一个队列中，为事务回查提供依据
+                         */
                         this.brokerController.getTransactionalMessageService().deletePrepareMessage(result.getPrepareMessage());
                     }
                     return sendResult;
                 }
                 return res;
             }
+            /**
+             * 事务回滚方法，不需要恢复原来的消息主题信息，直接删除预处理消息
+             */
         } else if (MessageSysFlag.TRANSACTION_ROLLBACK_TYPE == requestHeader.getCommitOrRollback()) {
+            /**
+             * 事务回滚方法
+             */
             result = this.brokerController.getTransactionalMessageService().rollbackMessage(requestHeader);
             if (result.getResponseCode() == ResponseCode.SUCCESS) {
                 RemotingCommand res = checkPrepareMessage(result.getPrepareMessage(), requestHeader);
                 if (res.getCode() == ResponseCode.SUCCESS) {
+                    /**
+                     * 删除预处理消息,并非真正的删除，存到另外一个队列中，为事务回查提供依据
+                     */
                     this.brokerController.getTransactionalMessageService().deletePrepareMessage(result.getPrepareMessage());
                 }
                 return res;
@@ -192,6 +219,12 @@ public class EndTransactionProcessor extends AsyncNettyRequestProcessor implemen
         return response;
     }
 
+    /**
+     * 恢复消息的主题，消息队列，构建新的消息对象
+     *
+     * @param msgExt
+     * @return
+     */
     private MessageExtBrokerInner endMessageTransaction(MessageExt msgExt) {
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         msgInner.setTopic(msgExt.getUserProperty(MessageConst.PROPERTY_REAL_TOPIC));
@@ -217,6 +250,12 @@ public class EndTransactionProcessor extends AsyncNettyRequestProcessor implemen
         return msgInner;
     }
 
+    /**
+     * 将消息再次存储到用户自己的消息队列和主题中，存储到commitlog文件中
+     *
+     * @param msgInner
+     * @return
+     */
     private RemotingCommand sendFinalMessage(MessageExtBrokerInner msgInner) {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
         final PutMessageResult putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);

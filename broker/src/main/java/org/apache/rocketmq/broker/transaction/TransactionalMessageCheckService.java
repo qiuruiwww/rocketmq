@@ -36,6 +36,9 @@ public class TransactionalMessageCheckService extends ServiceThread {
         return TransactionalMessageCheckService.class.getSimpleName();
     }
 
+    /**
+     * 该线程以 1分钟的频率进行事务回查操作
+     */
     @Override
     public void run() {
         log.info("Start transaction check service thread!");

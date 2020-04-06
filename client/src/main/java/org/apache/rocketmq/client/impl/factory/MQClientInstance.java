@@ -236,6 +236,9 @@ public class MQClientInstance {
                     // Start request-response channel
                     this.mQClientAPIImpl.start();
                     // Start various schedule tasks
+                    /**
+                     * 启动各种定时任务
+                     */
                     this.startScheduledTask();
                     // Start pull service
                     this.pullMessageService.start();
@@ -254,6 +257,9 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 启动各种定时任务
+     */
     private void startScheduledTask() {
         if (null == this.clientConfig.getNamesrvAddr()) {
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {

@@ -27,6 +27,10 @@ import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.utils.ThreadUtils;
 
+/**
+ * 消息拉取服务线程，该线程只为PUSH模式服务
+ * PULL模式只需要提供拉取API，由应用程序负责什么时间什么地点拉取消息
+ */
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();
     private final LinkedBlockingQueue<PullRequest> pullRequestQueue = new LinkedBlockingQueue<PullRequest>();
@@ -76,10 +80,24 @@ public class PullMessageService extends ServiceThread {
         return scheduledExecutorService;
     }
 
+    /**
+     * 拉取消息
+     *
+     * @param pullRequest
+     */
     private void pullMessage(final PullRequest pullRequest) {
+        /**
+         * 获取消费者内部实现类
+         */
         final MQConsumerInner consumer = this.mQClientFactory.selectConsumer(pullRequest.getConsumerGroup());
         if (consumer != null) {
+            /**
+             * 此处强制转换时因为此任务只为push模式服务
+             */
             DefaultMQPushConsumerImpl impl = (DefaultMQPushConsumerImpl) consumer;
+            /**
+             * 拉取消息
+             */
             impl.pullMessage(pullRequest);
         } else {
             log.warn("No matched consumer for the PullRequest {}, drop it", pullRequest);
@@ -93,6 +111,9 @@ public class PullMessageService extends ServiceThread {
         while (!this.isStopped()) {
             try {
                 PullRequest pullRequest = this.pullRequestQueue.take();
+                /**
+                 * 拉取消息
+                 */
                 this.pullMessage(pullRequest);
             } catch (InterruptedException ignored) {
             } catch (Exception e) {

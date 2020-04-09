@@ -67,6 +67,14 @@ public class PullAPIWrapper {
         this.unitMode = unitMode;
     }
 
+    /**
+     * 消息字节数组解码成消息列表，并并对消息进行过滤
+     *
+     * @param mq
+     * @param pullResult
+     * @param subscriptionData
+     * @return
+     */
     public PullResult processPullResult(final MessageQueue mq, final PullResult pullResult,
         final SubscriptionData subscriptionData) {
         PullResultExt pullResultExt = (PullResultExt) pullResult;
@@ -140,6 +148,27 @@ public class PullAPIWrapper {
         }
     }
 
+    /**
+     * 从broker拉取消息
+     *
+     * @param mq  从哪个消息消费队列拉取消息
+     * @param subExpression  消息过滤表达式
+     * @param expressionType  消息表达式类型  TAG  SQL92
+     * @param subVersion
+     * @param offset  消息拉取偏移量
+     * @param maxNums  本次拉取最大消息条数  默认32条
+     * @param sysFlag  拉取系统标记
+     * @param commitOffset  当前MessageQueue 的消费进度
+     * @param brokerSuspendMaxTimeMillis  消息拉取过程中允许broker挂起时间，默认15秒
+     * @param timeoutMillis 消息拉取超时时间
+     * @param communicationMode  消息拉取模式
+     * @param pullCallback 从broker拉取消息后的回调方法
+     * @return
+     * @throws MQClientException
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public PullResult pullKernelImpl(
         final MessageQueue mq,
         final String subExpression,
@@ -154,6 +183,11 @@ public class PullAPIWrapper {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        /**
+         * 从MQClientInstance获取broker地址
+         *
+         * 相同名称的broker构成主从结构，brokerId会不一样，每次拉取后，会给出一个建议，下次拉取时从主节点还是从节点拉取
+         */
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
                 this.recalculatePullFromWhichNode(mq), false);
@@ -192,11 +226,17 @@ public class PullAPIWrapper {
             requestHeader.setSubVersion(subVersion);
             requestHeader.setExpressionType(expressionType);
 
+            /**
+             * 如果消息过滤模式为类模式，则需要从filterServer上拉取消息，否则从broker上拉取
+             */
             String brokerAddr = findBrokerResult.getBrokerAddr();
             if (PullSysFlag.hasClassFilterFlag(sysFlagInner)) {
                 brokerAddr = computPullFromWhichFilterServer(mq.getTopic(), brokerAddr);
             }
 
+            /**
+             * 拉取消息
+             */
             PullResult pullResult = this.mQClientFactory.getMQClientAPIImpl().pullMessage(
                 brokerAddr,
                 requestHeader,
@@ -223,6 +263,14 @@ public class PullAPIWrapper {
         return MixAll.MASTER_ID;
     }
 
+    /**
+     * 获取注册在broker上的filterServer地址
+     *
+     * @param topic
+     * @param brokerAddr
+     * @return
+     * @throws MQClientException
+     */
     private String computPullFromWhichFilterServer(final String topic, final String brokerAddr)
         throws MQClientException {
         ConcurrentMap<String, TopicRouteData> topicRouteTable = this.mQClientFactory.getTopicRouteTable();

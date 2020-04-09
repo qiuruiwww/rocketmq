@@ -23,6 +23,7 @@ public enum ConsumeConcurrentlyStatus {
     CONSUME_SUCCESS,
     /**
      * Failure consumption,later try to consume
+     * 消费失败 会重新放入消费线程 之后重试消费
      */
     RECONSUME_LATER;
 }

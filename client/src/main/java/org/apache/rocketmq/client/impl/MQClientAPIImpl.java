@@ -731,6 +731,19 @@ public class MQClientAPIImpl {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
+    /**
+     * 拉取消息
+     *
+     * @param addr
+     * @param requestHeader
+     * @param timeoutMillis
+     * @param communicationMode
+     * @param pullCallback
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public PullResult pullMessage(
         final String addr,
         final PullMessageRequestHeader requestHeader,
@@ -757,6 +770,16 @@ public class MQClientAPIImpl {
         return null;
     }
 
+    /**
+     * 异步拉取消息
+     *
+     * @param addr
+     * @param request
+     * @param timeoutMillis
+     * @param pullCallback
+     * @throws RemotingException
+     * @throws InterruptedException
+     */
     private void pullMessageAsync(
         final String addr,
         final RemotingCommand request,
@@ -771,8 +794,14 @@ public class MQClientAPIImpl {
                     try {
                         PullResult pullResult = MQClientAPIImpl.this.processPullResponse(response);
                         assert pullResult != null;
+                        /**
+                         * 回调 onSuccess
+                         */
                         pullCallback.onSuccess(pullResult);
                     } catch (Exception e) {
+                        /**
+                         * 回调 onException
+                         */
                         pullCallback.onException(e);
                     }
                 } else {

@@ -147,7 +147,13 @@ public class BrokerController {
     private RemotingServer remotingServer;
     private RemotingServer fastRemotingServer;
     private TopicConfigManager topicConfigManager;
+    /**
+     * 消息发送线程池
+     */
     private ExecutorService sendMessageExecutor;
+    /**
+     * 消息拉取线程池
+     */
     private ExecutorService pullMessageExecutor;
     private ExecutorService replyMessageExecutor;
     private ExecutorService queryMessageExecutor;

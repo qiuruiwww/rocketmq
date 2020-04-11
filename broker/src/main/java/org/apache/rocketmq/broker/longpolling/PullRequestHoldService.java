@@ -29,6 +29,9 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.ConsumeQueueExt;
 
+/**
+ * 每5秒触发一次
+ */
 public class PullRequestHoldService extends ServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final String TOPIC_QUEUEID_SEPARATOR = "@";
@@ -41,6 +44,13 @@ public class PullRequestHoldService extends ServiceThread {
         this.brokerController = brokerController;
     }
 
+    /**
+     * 将拉取请求放入 ManyPullRequest
+     *
+     * @param topic
+     * @param queueId
+     * @param pullRequest
+     */
     public void suspendPullRequest(final String topic, final int queueId, final PullRequest pullRequest) {
         String key = this.buildKey(topic, queueId);
         ManyPullRequest mpr = this.pullRequestTable.get(key);
@@ -68,6 +78,9 @@ public class PullRequestHoldService extends ServiceThread {
         log.info("{} service started", this.getServiceName());
         while (!this.isStopped()) {
             try {
+                /**
+                 * 判断是否开启长轮询
+                 */
                 if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                     this.waitForRunning(5 * 1000);
                 } else {
@@ -99,8 +112,14 @@ public class PullRequestHoldService extends ServiceThread {
             if (2 == kArray.length) {
                 String topic = kArray[0];
                 int queueId = Integer.parseInt(kArray[1]);
+                /**
+                 * 获取消息消费队列的最大偏移量
+                 */
                 final long offset = this.brokerController.getMessageStore().getMaxOffsetInQueue(topic, queueId);
                 try {
+                    /**
+                     * 唤起挂起线程，触发拉取消息
+                     */
                     this.notifyMessageArriving(topic, queueId, offset);
                 } catch (Throwable e) {
                     log.error("check hold request failed. topic={}, queueId={}", topic, queueId, e);
@@ -109,15 +128,36 @@ public class PullRequestHoldService extends ServiceThread {
         }
     }
 
+    /**
+     * 唤起挂起线程，触发拉取消息
+     *
+     * @param topic
+     * @param queueId
+     * @param maxOffset
+     */
     public void notifyMessageArriving(final String topic, final int queueId, final long maxOffset) {
         notifyMessageArriving(topic, queueId, maxOffset, null, 0, null, null);
     }
 
+    /**
+     * 唤起挂起线程，触发拉取消息
+     *
+     * @param topic
+     * @param queueId
+     * @param maxOffset
+     * @param tagsCode
+     * @param msgStoreTime
+     * @param filterBitMap
+     * @param properties
+     */
     public void notifyMessageArriving(final String topic, final int queueId, final long maxOffset, final Long tagsCode,
         long msgStoreTime, byte[] filterBitMap, Map<String, String> properties) {
         String key = this.buildKey(topic, queueId);
         ManyPullRequest mpr = this.pullRequestTable.get(key);
         if (mpr != null) {
+            /**
+             * 获取主题队列挂起的拉取任务
+             */
             List<PullRequest> requestList = mpr.cloneListAndClear();
             if (requestList != null) {
                 List<PullRequest> replayList = new ArrayList<PullRequest>();
@@ -128,7 +168,13 @@ public class PullRequestHoldService extends ServiceThread {
                         newestOffset = this.brokerController.getMessageStore().getMaxOffsetInQueue(topic, queueId);
                     }
 
+                    /**
+                     * 消息队列的最大偏移量大于待拉取偏移量，说明有新消息
+                     */
                     if (newestOffset > request.getPullFromThisOffset()) {
+                        /**
+                         * 验证消息是否匹配，是否是客户端需要的消息
+                         */
                         boolean match = request.getMessageFilter().isMatchedByConsumeQueue(tagsCode,
                             new ConsumeQueueExt.CqExtUnit(tagsCode, msgStoreTime, filterBitMap));
                         // match by bit map, need eval again when properties is not null.
@@ -138,6 +184,9 @@ public class PullRequestHoldService extends ServiceThread {
 
                         if (match) {
                             try {
+                                /**
+                                 * 将消息返回给客户端
+                                 */
                                 this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                     request.getRequestCommand());
                             } catch (Throwable e) {
@@ -149,6 +198,9 @@ public class PullRequestHoldService extends ServiceThread {
 
                     if (System.currentTimeMillis() >= (request.getSuspendTimestamp() + request.getTimeoutMillis())) {
                         try {
+                            /**
+                             * 超时也将消息返回给客户端
+                             */
                             this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                 request.getRequestCommand());
                         } catch (Throwable e) {
@@ -161,6 +213,9 @@ public class PullRequestHoldService extends ServiceThread {
                 }
 
                 if (!replayList.isEmpty()) {
+                    /**
+                     * 拉取任务继续挂起
+                     */
                     mpr.addPullRequest(replayList);
                 }
             }

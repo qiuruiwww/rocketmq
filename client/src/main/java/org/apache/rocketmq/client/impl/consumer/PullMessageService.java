@@ -30,6 +30,11 @@ import org.apache.rocketmq.common.utils.ThreadUtils;
 /**
  * 消息拉取服务线程，该线程只为PUSH模式服务
  * PULL模式只需要提供拉取API，由应用程序负责什么时间什么地点拉取消息
+ *
+ * rocketMQ 并没有实现真正的PUSH模式，而是消费者主动向消息服务器拉取消息，rocketmq是循环向消息服务器发送消息拉取请求
+ *
+ * 消息拉取长轮询机制：rocketMQ一方面会每5秒轮询检查一次消息是否可达，同时一有新消息到达时立马通知挂起线程验证新消息是否为自己感兴趣的消息，如果是则
+ *                  从commitlog文件提取消息返回给客户端，否则知道挂起超时。
  */
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();

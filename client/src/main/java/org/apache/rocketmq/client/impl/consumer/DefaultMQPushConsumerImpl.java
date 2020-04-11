@@ -1110,6 +1110,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return subSet;
     }
 
+    /**
+     * 消费者负载
+     */
     @Override
     public void doRebalance() {
         if (!this.pause) {

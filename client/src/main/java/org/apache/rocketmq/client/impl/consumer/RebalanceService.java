@@ -23,6 +23,10 @@ import org.apache.rocketmq.logging.InternalLogger;
 
 /**
  * 消息队列负载线程
+ * 每隔MQClientInstance持有一个RebalanceService实现，随着MQClientInstance 的启动而启动
+ *
+ * 默认每20秒执行一次，对消费者订阅的主题进行一次队列重新分配，每一次分配都会获取主题的所有队列、从broker服务器实时查询该主题该消费组内消费者列表，
+ * 对新分配的消息队列会创建对应的PullRequest对象，在一个JVM进程中，同一个消费组同一个队列只会存在PullRequest对象
  */
 public class RebalanceService extends ServiceThread {
     private static long waitInterval =

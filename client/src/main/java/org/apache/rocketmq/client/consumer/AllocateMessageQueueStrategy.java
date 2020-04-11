@@ -21,6 +21,9 @@ import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * Strategy Algorithm for message allocating between consumers
+ *
+ * 消息队列分配算法接口
+ * 分配算法遵循一个消费者可以分配多个消费队列，但是一个消费队列只会分配给一个消费者，所以如果消费者数量大于消息队列数量，则有些消费者无法消费消息
  */
 public interface AllocateMessageQueueStrategy {
 

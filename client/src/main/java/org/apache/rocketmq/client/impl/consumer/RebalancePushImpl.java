@@ -81,10 +81,20 @@ public class RebalancePushImpl extends RebalanceImpl {
         this.getmQClientFactory().sendHeartbeatToAllBrokerWithLock();
     }
 
+    /**
+     * 持久化待移除消息队列的消费进度
+     *
+     * @param mq
+     * @param pq
+     * @return
+     */
     @Override
     public boolean removeUnnecessaryMessageQueue(MessageQueue mq, ProcessQueue pq) {
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
+        /**
+         * 集群模式并且是顺序消费时需要解锁队列
+         */
         if (this.defaultMQPushConsumerImpl.isConsumeOrderly()
             && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
             try {
@@ -132,11 +142,22 @@ public class RebalancePushImpl extends RebalanceImpl {
         return ConsumeType.CONSUME_PASSIVELY;
     }
 
+    /**
+     * 从内存中移除该消息队列的消费进度
+     *
+     * @param mq
+     */
     @Override
     public void removeDirtyOffset(final MessageQueue mq) {
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
     }
 
+    /**
+     * 从磁盘中读取该消息队列的消费进度
+     *
+     * @param mq
+     * @return
+     */
     @Override
     public long computePullFromWhere(MessageQueue mq) {
         long result = -1;
@@ -146,6 +167,9 @@ public class RebalancePushImpl extends RebalanceImpl {
             case CONSUME_FROM_LAST_OFFSET_AND_FROM_MIN_WHEN_BOOT_FIRST:
             case CONSUME_FROM_MIN_OFFSET:
             case CONSUME_FROM_MAX_OFFSET:
+                /**
+                 * 从队列最小偏移量开始读取
+                 */
             case CONSUME_FROM_LAST_OFFSET: {
                 long lastOffset = offsetStore.readOffset(mq, ReadOffsetType.READ_FROM_STORE);
                 if (lastOffset >= 0) {
@@ -167,6 +191,9 @@ public class RebalancePushImpl extends RebalanceImpl {
                 }
                 break;
             }
+            /**
+             * 从头开始消费
+             */
             case CONSUME_FROM_FIRST_OFFSET: {
                 long lastOffset = offsetStore.readOffset(mq, ReadOffsetType.READ_FROM_STORE);
                 if (lastOffset >= 0) {
@@ -178,6 +205,9 @@ public class RebalancePushImpl extends RebalanceImpl {
                 }
                 break;
             }
+            /**
+             * 从消费者启动的时间戳对应的消费进度开始消费
+             */
             case CONSUME_FROM_TIMESTAMP: {
                 long lastOffset = offsetStore.readOffset(mq, ReadOffsetType.READ_FROM_STORE);
                 if (lastOffset >= 0) {

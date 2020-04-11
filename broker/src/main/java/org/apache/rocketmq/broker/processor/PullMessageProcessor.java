@@ -91,9 +91,9 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
     /**
      * 处理消息拉取入口
      *
-     * @param channel
-     * @param request
-     * @param brokerAllowSuspend
+     * @param channel  网络通道，通过该通道向消息客户端发送响应结果
+     * @param request  消息拉取请求
+     * @param brokerAllowSuspend  broker端是否支持挂起，拉取消息时默认传入true，表示未找到消息时则挂起，如果参数为false，未找到消息则直接返回客户端未找到
      * @return
      * @throws RemotingCommandException
      */
@@ -421,15 +421,28 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
 
                     if (brokerAllowSuspend && hasSuspendFlag) {
                         long pollingTimeMills = suspendTimeoutMillisLong;
+                        /**
+                         * 判断是否开启长轮询模式  longPollingEnable
+                         *
+                         */
                         if (!this.brokerController.getBrokerConfig().isLongPollingEnable()) {
+                            /**
+                             * 没有开启长轮询模式则挂起 shortPollingTimeMills 时间再去验证消息消息是否已经到达消息队列，没有则返回客户端 消息不存在
+                             */
                             pollingTimeMills = this.brokerController.getBrokerConfig().getShortPollingTimeMills();
                         }
 
                         String topic = requestHeader.getTopic();
                         long offset = requestHeader.getQueueOffset();
                         int queueId = requestHeader.getQueueId();
+                        /**
+                         * 构建拉取请求
+                         */
                         PullRequest pullRequest = new PullRequest(request, channel, pollingTimeMills,
                             this.brokerController.getMessageStore().now(), offset, subscriptionData, messageFilter);
+                        /**
+                         * 放入消息拉取服务
+                         */
                         this.brokerController.getPullRequestHoldService().suspendPullRequest(topic, queueId, pullRequest);
                         response = null;
                         break;
@@ -561,12 +574,22 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         }
     }
 
+    /**
+     * 将消息返回给客户端
+     *
+     * @param channel
+     * @param request
+     * @throws RemotingCommandException
+     */
     public void executeRequestWhenWakeup(final Channel channel,
         final RemotingCommand request) throws RemotingCommandException {
         Runnable run = new Runnable() {
             @Override
             public void run() {
                 try {
+                    /**
+                     * 拉取消息，不设置挂起，根据偏移量无法获取到消息时，不再挂起线程等待消息到来，直接返回客户端未拉取到消息
+                     */
                     final RemotingCommand response = PullMessageProcessor.this.processRequest(channel, request, false);
 
                     if (response != null) {

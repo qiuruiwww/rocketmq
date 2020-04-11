@@ -19,23 +19,50 @@ package org.apache.rocketmq.common.subscription;
 
 import org.apache.rocketmq.common.MixAll;
 
+/**
+ * 消息订阅组配置信息
+ */
 public class SubscriptionGroupConfig {
 
+    /**
+     * 消费组名称
+     */
     private String groupName;
 
+    /**
+     * 是否可以消费，为false时该消费组无法拉取消息，从而无法消息
+     */
     private boolean consumeEnable = true;
+    /**
+     * 是否允许从队列最小偏移量开始消费
+     */
     private boolean consumeFromMinEnable = true;
 
+    /**
+     * 设置该消费组是否能以广播模式消费，false表示只能以集群的模式消费
+     */
     private boolean consumeBroadcastEnable = true;
 
+    /**
+     * 重试队列个数
+     */
     private int retryQueueNums = 1;
 
+    /**
+     * 消息最大重试次数
+     */
     private int retryMaxTimes = 16;
 
     private long brokerId = MixAll.MASTER_ID;
 
+    /**
+     * 如果消息堵塞，将转向该brokerID的服务器上拉取消息
+     */
     private long whichBrokerWhenConsumeSlowly = 1;
 
+    /**
+     * 当消费发生变化时是否立即进行消息队列重新负载
+     */
     private boolean notifyConsumerIdsChangedEnable = true;
 
     public String getGroupName() {

@@ -34,15 +34,22 @@ public interface ConsumeMessageService {
 
     int getCorePoolSize();
 
+    /**
+     * 直接消费消息，主要用于管理命令收到消费消息
+     *
+     * @param msg
+     * @param brokerName
+     * @return
+     */
     ConsumeMessageDirectlyResult consumeMessageDirectly(final MessageExt msg, final String brokerName);
 
     /**
-     * 将消息提交到ConsumeMessageService，供消费者消息，异步提交，回到函数不关心怎么消费
+     * 将消息提交到ConsumeMessageService，供消费者消息，异步提交，回调函数不关心怎么消费
      *
-     * @param msgs
-     * @param processQueue
-     * @param messageQueue
-     * @param dispathToConsume
+     * @param msgs 消息列表，默认从服务器拉取最多32条消息
+     * @param processQueue 消息处理队列
+     * @param messageQueue 消息所属消费队列
+     * @param dispathToConsume 是否转发到消费线程池，并发消费时忽略该参数
      */
     void submitConsumeRequest(
         final List<MessageExt> msgs,

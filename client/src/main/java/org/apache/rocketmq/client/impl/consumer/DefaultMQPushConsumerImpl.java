@@ -482,6 +482,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
         String subExpression = null;
         boolean classFilter = false;
+        /**
+         * 根据订阅信息构建消息拉取标记，设置subExpression、classFilter与消息过滤相关
+         */
         SubscriptionData sd = this.rebalanceImpl.getSubscriptionInner().get(pullRequest.getMessageQueue().getTopic());
         if (sd != null) {
             if (this.defaultMQPushConsumer.isPostSubscriptionWhenPull() && !sd.isClassFilterMode()) {
@@ -993,8 +996,17 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return this.rebalanceImpl.getSubscriptionInner();
     }
 
+    /**
+     * 订阅主题消息
+     * @param topic
+     * @param subExpression
+     * @throws MQClientException
+     */
     public void subscribe(String topic, String subExpression) throws MQClientException {
         try {
+            /**
+             * 构建订阅消息并加入到 rebalanceImpl 中，以便 rebalanceImpl 进行消息队列负载
+             */
             SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(),
                 topic, subExpression);
             this.rebalanceImpl.getSubscriptionInner().put(topic, subscriptionData);
@@ -1006,6 +1018,14 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /**
+     * 类过滤模式，订阅主题消息
+     *
+     * @param topic
+     * @param fullClassName
+     * @param filterClassSource
+     * @throws MQClientException
+     */
     public void subscribe(String topic, String fullClassName, String filterClassSource) throws MQClientException {
         try {
             SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(),
@@ -1023,6 +1043,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /**
+     * 消息选择器 订阅主题消息
+     *
+     * @param topic
+     * @param messageSelector  消息选择器
+     * @throws MQClientException
+     */
     public void subscribe(final String topic, final MessageSelector messageSelector) throws MQClientException {
         try {
             if (messageSelector == null) {

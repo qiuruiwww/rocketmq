@@ -161,6 +161,9 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         ConsumerFilterData consumerFilterData = null;
         if (hasSubscriptionFlag) {
             try {
+                /**
+                 * 根据主题、消息过滤表达式构建订阅消息实体
+                 */
                 subscriptionData = FilterAPI.build(
                     requestHeader.getTopic(), requestHeader.getSubscription(), requestHeader.getExpressionType()
                 );
@@ -235,11 +238,20 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
             return response;
         }
 
+        /**
+         * 构建消息过滤对象，
+         */
         MessageFilter messageFilter;
         if (this.brokerController.getBrokerConfig().isFilterSupportRetry()) {
+            /**
+             * 支持对重试主题的过滤
+             */
             messageFilter = new ExpressionForRetryMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
         } else {
+            /**
+             * 不支持对重试主题的过滤
+             */
             messageFilter = new ExpressionMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
         }

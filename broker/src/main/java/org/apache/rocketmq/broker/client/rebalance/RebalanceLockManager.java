@@ -27,11 +27,20 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageQueue;
 
+/**
+ * broker端加锁处理类
+ */
 public class RebalanceLockManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.REBALANCE_LOCK_LOGGER_NAME);
+    /**
+     * 锁最大存活时间
+     */
     private final static long REBALANCE_LOCK_MAX_LIVE_TIME = Long.parseLong(System.getProperty(
         "rocketmq.broker.rebalance.lockMaxLiveTime", "60000"));
     private final Lock lock = new ReentrantLock();
+    /**
+     * 锁容器，表示当前消息队列被消费组中的哪个消费组锁持有
+     */
     private final ConcurrentMap<String/* group */, ConcurrentHashMap<MessageQueue, LockEntry>> mqLockTable =
         new ConcurrentHashMap<String, ConcurrentHashMap<MessageQueue, LockEntry>>(1024);
 
@@ -97,6 +106,14 @@ public class RebalanceLockManager {
         return true;
     }
 
+    /**
+     * 消息队列加锁，消息队列跟消费者建立关系
+     *
+     * @param group
+     * @param mq
+     * @param clientId
+     * @return
+     */
     private boolean isLocked(final String group, final MessageQueue mq, final String clientId) {
         ConcurrentHashMap<MessageQueue, LockEntry> groupValue = this.mqLockTable.get(group);
         if (groupValue != null) {
@@ -114,6 +131,14 @@ public class RebalanceLockManager {
         return false;
     }
 
+    /**
+     * 申请对mqs消息消费队列集合加锁
+     *
+     * @param group
+     * @param mqs
+     * @param clientId  消息消费者
+     * @return   返回成功加锁的消息队列集合
+     */
     public Set<MessageQueue> tryLockBatch(final String group, final Set<MessageQueue> mqs,
         final String clientId) {
         Set<MessageQueue> lockedMqs = new HashSet<MessageQueue>(mqs.size());
@@ -189,6 +214,13 @@ public class RebalanceLockManager {
         return lockedMqs;
     }
 
+    /**
+     * 申请对mqs消息消费队列集合解锁
+     *
+     * @param group
+     * @param mqs
+     * @param clientId  持有锁的消息消费者
+     */
     public void unlockBatch(final String group, final Set<MessageQueue> mqs, final String clientId) {
         try {
             this.lock.lockInterruptibly();

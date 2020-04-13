@@ -22,11 +22,15 @@ import org.apache.rocketmq.common.message.MessageExt;
 /**
  * A MessageListenerConcurrently object is used to receive asynchronously delivered messages orderly.one queue,one
  * thread
+ *
+ * 顺序消息消费监听器   应用程序需要实现的消费监听接口
  */
 public interface MessageListenerOrderly extends MessageListener {
     /**
      * It is not recommend to throw exception,rather than returning ConsumeOrderlyStatus.SUSPEND_CURRENT_QUEUE_A_MOMENT
      * if consumption failure
+     *
+     * 顺序消息消费方法，应用程序需要实现的具体消费逻辑
      *
      * @param msgs msgs.size() >= 1<br> DefaultMQPushConsumer.consumeMessageBatchMaxSize=1,you can modify here
      * @return The consume status

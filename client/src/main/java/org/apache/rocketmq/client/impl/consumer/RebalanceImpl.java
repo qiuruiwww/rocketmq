@@ -130,6 +130,12 @@ public abstract class RebalanceImpl {
         return result;
     }
 
+    /**
+     * 锁定消息队列
+     *
+     * @param mq
+     * @return
+     */
     public boolean lock(final MessageQueue mq) {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (findBrokerResult != null) {
@@ -163,6 +169,9 @@ public abstract class RebalanceImpl {
         return false;
     }
 
+    /**
+     * 锁定分配给给自己的消息消费队列
+     */
     public void lockAll() {
         HashMap<String, Set<MessageQueue>> brokerMqs = this.buildProcessQueueTableByBrokerName();
 
@@ -183,9 +192,15 @@ public abstract class RebalanceImpl {
                 requestBody.setMqSet(mqs);
 
                 try {
+                    /**
+                     * 向broker发送锁定消息队列，返回成功被当前消费者锁定的消息队列
+                     */
                     Set<MessageQueue> lockOKMQSet =
                         this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
 
+                    /**
+                     * 将被消费者成功锁定的消费队列设置锁定状态，同时更新加锁时间
+                     */
                     for (MessageQueue mq : lockOKMQSet) {
                         ProcessQueue processQueue = this.processQueueTable.get(mq);
                         if (processQueue != null) {
@@ -198,6 +213,9 @@ public abstract class RebalanceImpl {
                         }
                     }
                     for (MessageQueue mq : mqs) {
+                        /**
+                         * 将没有被消费者锁定的消息队列设置锁状态为没有锁定状态
+                         */
                         if (!lockOKMQSet.contains(mq)) {
                             ProcessQueue processQueue = this.processQueueTable.get(mq);
                             if (processQueue != null) {

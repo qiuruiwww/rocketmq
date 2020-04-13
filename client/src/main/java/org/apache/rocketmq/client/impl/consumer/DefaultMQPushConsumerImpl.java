@@ -297,8 +297,14 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 return;
             }
         } else {
+            /**
+             * 顺序消息处理逻辑，判断消息队列是否被锁定
+             */
             if (processQueue.isLocked()) {
                 if (!pullRequest.isLockedFirst()) {
+                    /**
+                     * 从磁盘中读取该消息队列的进度
+                     */
                     final long offset = this.rebalanceImpl.computePullFromWhere(pullRequest.getMessageQueue());
                     boolean brokerBusy = offset < pullRequest.getNextOffset();
                     log.info("the first time to pull message, so fix offset from broker. pullRequest: {} NewOffset: {} brokerBusy: {}",
@@ -312,6 +318,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     pullRequest.setNextOffset(offset);
                 }
             } else {
+                /**
+                 * 没有被锁定则延迟3秒重新放入拉取队列
+                 */
                 this.executePullRequestLater(pullRequest, pullTimeDelayMillsWhenException);
                 log.info("pull message later because not locked in broker, {}", pullRequest);
                 return;

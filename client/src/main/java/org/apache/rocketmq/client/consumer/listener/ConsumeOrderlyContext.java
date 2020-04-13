@@ -23,6 +23,9 @@ import org.apache.rocketmq.common.message.MessageQueue;
  */
 public class ConsumeOrderlyContext {
     private final MessageQueue messageQueue;
+    /**
+     * 是否自动提交确认
+     */
     private boolean autoCommit = true;
     private long suspendCurrentQueueTimeMillis = -1;
 

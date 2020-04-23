@@ -780,6 +780,12 @@ public class CommitLog {
 
     }
 
+    /**
+     * 消息存储
+     *
+     * @param msg
+     * @return
+     */
     public PutMessageResult putMessage(final MessageExtBrokerInner msg) {
         // Set the storage time
         msg.setStoreTimestamp(System.currentTimeMillis());
@@ -829,8 +835,14 @@ public class CommitLog {
         long elapsedTimeInLock = 0;
 
         MappedFile unlockMappedFile = null;
+        /**
+         * 获取当前可以写入的commitlog文件
+         */
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
+        /**
+         * 申请锁，消息写入commitlog文件时串行执行的
+         */
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
@@ -838,8 +850,15 @@ public class CommitLog {
 
             // Here settings are stored timestamp, in order to ensure an orderly
             // global
+            /**
+             * 设置消息存储时间
+             */
             msg.setStoreTimestamp(beginLockTimestamp);
 
+            /**
+             * mappedFile 为null，表明commitlog目录下没有任何文件，时第一次发送消息，用偏移量为0创建第一个commitlog文件
+             * 文件为00000000000000000000，创建失败，抛出CREATE_MAPEDFILE_FAILED 异常，可能是磁盘空间不足或者权限不够
+             */
             if (null == mappedFile || mappedFile.isFull()) {
                 mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
             }
@@ -849,6 +868,9 @@ public class CommitLog {
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
 
+            /**
+             * 将消息追加到MappedFile中
+             */
             result = mappedFile.appendMessage(msg, this.appendMessageCallback);
             switch (result.getStatus()) {
                 case PUT_OK:
@@ -1499,6 +1521,9 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 将消息追加到内存中，需要根据同步刷盘还是一部刷盘，将消息持久化到磁盘中
+     */
     class DefaultAppendMessageCallback implements AppendMessageCallback {
         // File at the end of the minimum fixed length empty
         private static final int END_FILE_MIN_BLANK_LENGTH = 4 + 4;
@@ -1601,6 +1626,9 @@ public class CommitLog {
             }
 
             // Determines whether there is sufficient free space
+            /**
+             * 创建新的commitlog文件来存储消息
+             */
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.resetByteBuffer(this.msgStoreItemMemory, maxBlank);
                 // 1 TOTALSIZE
@@ -1659,6 +1687,9 @@ public class CommitLog {
             if (propertiesLength > 0)
                 this.msgStoreItemMemory.put(propertiesData);
 
+            /**
+             * 将消息存储到byteBuffer中，这里只是将消息存储在mappedFile对应的内存映射buffer中，并没有完成刷盘
+             */
             final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
             // Write messages to the queue buffer
             byteBuffer.put(this.msgStoreItemMemory.array(), 0, msgLen);

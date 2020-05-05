@@ -42,27 +42,73 @@ import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
 public class MappedFile extends ReferenceResource {
+    /**
+     * 操作系统每页的大小，默认4k
+     */
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    /**
+     * 当前JVM实例中的MappedFile虚拟内存
+     */
     private static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
 
+    /**
+     * 当前JVM实例中的MappedFile对象个数
+     */
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
+    /**
+     * 当前MappedFile文件的写指针，从0开始，内存映射中的写指针
+     */
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
+    /**
+     * 当前文件的提交指针，如果开启transientStorePoolEnable，则数据会先存储到TransientStorePool中，然后提交到内存映射ByteBuffer中，再刷写到磁盘
+     */
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
+    /**
+     * 刷写到磁盘指针，该指针之前的数据持久化到磁盘中
+     */
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
+    /**
+     * 文件大小
+     */
     protected int fileSize;
+    /**
+     * 文件通道
+     */
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
+     * 堆内存ByteBuffer，如果不为空，数据首先将存储在该Buffer中，然后提交到MappedFile对应的内存映射文件Buffer。
      */
     protected ByteBuffer writeBuffer = null;
+    /**
+     * 堆内存池
+     */
     protected TransientStorePool transientStorePool = null;
+    /**
+     * 文件名称
+     */
     private String fileName;
+    /**
+     * 该文件的初始偏移量
+     */
     private long fileFromOffset;
+    /**
+     * 物理文件
+     */
     private File file;
+    /**
+     * 物理文件对应的内存映射buffer
+     */
     private MappedByteBuffer mappedByteBuffer;
+    /**
+     * 文件最后一次内存写入时间
+     */
     private volatile long storeTimestamp = 0;
+    /**
+     * 是否是MappedFileQueue中的第一个文件
+     */
     private boolean firstCreateInQueue = false;
 
     public MappedFile() {
@@ -287,6 +333,7 @@ public class MappedFile extends ReferenceResource {
 
     /**
      * @return The current flushed position
+     * 文件刷盘
      */
     public int flush(final int flushLeastPages) {
         if (this.isAbleToFlush(flushLeastPages)) {
@@ -314,11 +361,20 @@ public class MappedFile extends ReferenceResource {
         return this.getFlushedPosition();
     }
 
+    /**
+     * 内存映射文件提交
+     *
+     * @param commitLeastPages  本次提交最小页数
+     * @return
+     */
     public int commit(final int commitLeastPages) {
         if (writeBuffer == null) {
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
             return this.wrotePosition.get();
         }
+        /**
+         * 判断是否执行commit操作
+         */
         if (this.isAbleToCommit(commitLeastPages)) {
             if (this.hold()) {
                 commit0(commitLeastPages);
@@ -337,6 +393,11 @@ public class MappedFile extends ReferenceResource {
         return this.committedPosition.get();
     }
 
+    /**
+     * 提交
+     *
+     * @param commitLeastPages
+     */
     protected void commit0(final int commitLeastPages) {
         int writePos = this.wrotePosition.get();
         int lastCommittedPosition = this.committedPosition.get();
@@ -370,6 +431,12 @@ public class MappedFile extends ReferenceResource {
         return write > flush;
     }
 
+    /**
+     * 判断是否执行commit操作
+     *
+     * @param commitLeastPages
+     * @return
+     */
     protected boolean isAbleToCommit(final int commitLeastPages) {
         int flush = this.committedPosition.get();
         int write = this.wrotePosition.get();

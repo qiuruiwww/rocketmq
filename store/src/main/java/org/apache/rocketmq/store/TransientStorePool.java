@@ -31,8 +31,17 @@ import sun.nio.ch.DirectBuffer;
 public class TransientStorePool {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    /**
+     * availableBuffer文件个数
+     */
     private final int poolSize;
+    /**
+     * 每隔ByteBuffer大小
+     */
     private final int fileSize;
+    /**
+     * ByteBuffer双端队列容器
+     */
     private final Deque<ByteBuffer> availableBuffers;
     private final MessageStoreConfig storeConfig;
 
@@ -52,6 +61,9 @@ public class TransientStorePool {
 
             final long address = ((DirectBuffer) byteBuffer).address();
             Pointer pointer = new Pointer(address);
+            /**
+             * 锁定内存，避免被置换到交换区，提高性能
+             */
             LibC.INSTANCE.mlock(pointer, new NativeLong(fileSize));
 
             availableBuffers.offer(byteBuffer);

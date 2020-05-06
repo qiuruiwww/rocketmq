@@ -186,6 +186,16 @@ public class IndexFile {
         return result;
     }
 
+    /**
+     * 根据索引key查找消息
+     *
+     * @param phyOffsets 查找到的消息物理偏移量
+     * @param key 索引key
+     * @param maxNum 本次查找最大消息条数
+     * @param begin 开始时间戳
+     * @param end 结束时间戳
+     * @param lock
+     */
     public void selectPhyOffset(final List<Long> phyOffsets, final String key, final int maxNum,
         final long begin, final long end, boolean lock) {
         if (this.mappedFile.hold()) {

@@ -76,13 +76,16 @@ public class MQFaultStrategy {
                     if (pos < 0)
                         pos = 0;
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
+                    //判断该消息队列的broker是否可用了，加入故障延迟的时间过期了
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
                     }
                 }
 
+                //从规避的broker中选择一个可用的broker
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
+                //获取可用broker的写队列数量
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {
                     final MessageQueue mq = tpInfo.selectOneMessageQueue();
@@ -92,6 +95,7 @@ public class MQFaultStrategy {
                     }
                     return mq;
                 } else {
+                    //移除失败条目，意味着该broker重新参与路由计算
                     latencyFaultTolerance.remove(notBestBroker);
                 }
             } catch (Exception e) {
@@ -101,6 +105,7 @@ public class MQFaultStrategy {
             return tpInfo.selectOneMessageQueue();
         }
 
+        //取余算法得到一个不在lastBrokerName 上的消息队列
         return tpInfo.selectOneMessageQueue(lastBrokerName);
     }
 
@@ -109,7 +114,7 @@ public class MQFaultStrategy {
      *
      * @param brokerName
      * @param currentLatency
-     * @param isolation 是否隔离  为使用true则使用默认30秒来隔离
+     * @param isolation 是否隔离  为true则使用默认30秒来隔离
      */
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         if (this.sendLatencyFaultEnable) {
@@ -121,6 +126,13 @@ public class MQFaultStrategy {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 选个broker规避时长
+     * @Date 14:23 2020/5/9
+     * @Param [currentLatency]
+     * @return long
+     **/
     private long computeNotAvailableDuration(final long currentLatency) {
         for (int i = latencyMax.length - 1; i >= 0; i--) {
             if (currentLatency >= latencyMax[i])

@@ -39,6 +39,9 @@ public class Message implements Serializable {
      * 消息体
      */
     private byte[] body;
+    /**
+     * 事物消息ID
+     */
     private String transactionId;
 
     public Message() {

@@ -79,6 +79,13 @@ public class MQAdminImpl {
         createTopic(key, newTopic, queueNum, 0);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 创建topic信息
+     * @Date 17:03 2020/5/9
+     * @Param [key, newTopic, queueNum, topicSysFlag]
+     * @return void
+     **/
     public void createTopic(String key, String newTopic, int queueNum, int topicSysFlag) throws MQClientException {
         try {
             Validators.checkTopic(newTopic);

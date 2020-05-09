@@ -32,11 +32,17 @@ public class TopicPublishInfo {
      * 是否有topic信息
      */
     private boolean haveTopicRouterInfo = false;
+    /**
+     * 消息队列信息列表
+     */
     private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>();
     /**
      * 每选择一次消息队列，该值会加1，用于选择消息队列
      */
     private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex();
+    /**
+     * topic路由信息
+     */
     private TopicRouteData topicRouteData;
 
     public boolean isOrderTopic() {
@@ -47,6 +53,13 @@ public class TopicPublishInfo {
         this.orderTopic = orderTopic;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description topic对应的消息队列不为空
+     * @Date 11:10 2020/5/9
+     * @Param []
+     * @return boolean
+     **/
     public boolean ok() {
         return null != this.messageQueueList && !this.messageQueueList.isEmpty();
     }
@@ -75,10 +88,19 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 获取一个不在lastBrokerName 的消息队列
+     * @Date 11:53 2020/5/9
+     * @Param [lastBrokerName]
+     * @return org.apache.rocketmq.common.message.MessageQueue
+     **/
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
         if (lastBrokerName == null) {
+            //取余算法得到一个消息队列
             return selectOneMessageQueue();
         } else {
+            //取余算法得到一个跟lastBrokerName 不同的消息队列
             int index = this.sendWhichQueue.getAndIncrement();
             for (int i = 0; i < this.messageQueueList.size(); i++) {
                 int pos = Math.abs(index++) % this.messageQueueList.size();
@@ -93,6 +115,13 @@ public class TopicPublishInfo {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 根据取余数算法得到一个消息队列
+     * @Date 11:51 2020/5/9
+     * @Param []
+     * @return org.apache.rocketmq.common.message.MessageQueue
+     **/
     public MessageQueue selectOneMessageQueue() {
         int index = this.sendWhichQueue.getAndIncrement();
         int pos = Math.abs(index) % this.messageQueueList.size();
@@ -101,6 +130,13 @@ public class TopicPublishInfo {
         return this.messageQueueList.get(pos);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 获取broker的写队列数量
+     * @Date 11:58 2020/5/9
+     * @Param [brokerName]
+     * @return int
+     **/
     public int getQueueIdByBroker(final String brokerName) {
         for (int i = 0; i < topicRouteData.getQueueDatas().size(); i++) {
             final QueueData queueData = this.topicRouteData.getQueueDatas().get(i);

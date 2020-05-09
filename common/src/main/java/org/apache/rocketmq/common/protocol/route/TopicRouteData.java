@@ -30,8 +30,17 @@ public class TopicRouteData extends RemotingSerializable {
      * 顺序消息配置内容，来自于kvconfig
      */
     private String orderTopicConf;
+    /**
+     * topic对应的队列信息
+     */
     private List<QueueData> queueDatas;
+    /**
+     * topic所属的broker信息
+     */
     private List<BrokerData> brokerDatas;
+    /**
+     * broker对应的过滤服务列表
+     */
     private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public TopicRouteData cloneTopicRouteData() {

@@ -112,6 +112,9 @@ public class MQClientInstance {
         }
     });
     private final ClientRemotingProcessor clientRemotingProcessor;
+    /**
+     * 消息拉取服务线程，该线程只为PUSH模式服务
+     **/
     private final PullMessageService pullMessageService;
     private final RebalanceService rebalanceService;
     private final DefaultMQProducer defaultMQProducer;
@@ -143,8 +146,10 @@ public class MQClientInstance {
 
         this.mQAdminImpl = new MQAdminImpl(this);
 
+        //消息拉取服务线程，该线程只为PUSH模式服务
         this.pullMessageService = new PullMessageService(this);
 
+        //消息队列负载线程
         this.rebalanceService = new RebalanceService(this);
 
         this.defaultMQProducer = new DefaultMQProducer(MixAll.CLIENT_INNER_PRODUCER_GROUP);
@@ -159,10 +164,18 @@ public class MQClientInstance {
             MQVersion.getVersionDesc(MQVersion.CURRENT_VERSION), RemotingCommand.getSerializeTypeConfigInThisServer());
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 消息转换
+     * @Date 11:35 2020/5/9
+     * @Param [topic, route]
+     * @return org.apache.rocketmq.client.impl.producer.TopicPublishInfo
+     **/
     public static TopicPublishInfo topicRouteData2TopicPublishInfo(final String topic, final TopicRouteData route) {
         TopicPublishInfo info = new TopicPublishInfo();
         info.setTopicRouteData(route);
         if (route.getOrderTopicConf() != null && route.getOrderTopicConf().length() > 0) {
+            //顺序消息处理
             String[] brokers = route.getOrderTopicConf().split(";");
             for (String broker : brokers) {
                 String[] item = broker.split(":");
@@ -175,6 +188,7 @@ public class MQClientInstance {
 
             info.setOrderTopic(true);
         } else {
+            //非顺序消息处理
             List<QueueData> qds = route.getQueueDatas();
             Collections.sort(qds);
             for (QueueData qd : qds) {
@@ -223,6 +237,13 @@ public class MQClientInstance {
         return mqList;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 启动MQClientInstance
+     * @Date 17:15 2020/5/9
+     * @Param []
+     * @return void
+     **/
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -234,6 +255,7 @@ public class MQClientInstance {
                         this.mQClientAPIImpl.fetchNameServerAddr();
                     }
                     // Start request-response channel
+                    //启动远程通信服务，有客户端模式和服务端模式
                     this.mQClientAPIImpl.start();
                     // Start various schedule tasks
                     /**
@@ -285,7 +307,7 @@ public class MQClientInstance {
         }
 
         /**
-         * 定时从nameserver更新路由信息
+         * 定时从nameserver更新路由信息，默认30秒拉取一次
          */
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -535,6 +557,13 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 从nameserver更新topic路由信息
+     * @Date 11:13 2020/5/9
+     * @Param [topic]
+     * @return boolean
+     **/
     public boolean updateTopicRouteInfoFromNameServer(final String topic) {
         return updateTopicRouteInfoFromNameServer(topic, false, null);
     }
@@ -632,13 +661,22 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 从nameserver更新topic路由信息
+     * @Date 11:13 2020/5/9
+     * @Param [topic, isDefault, defaultMQProducer]
+     * @return boolean
+     **/
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
+            //从nameserver更新路由信息需要加锁
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     TopicRouteData topicRouteData;
                     if (isDefault && defaultMQProducer != null) {
+                        //系统默认topic查询路由信息
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
                         if (topicRouteData != null) {
@@ -652,6 +690,7 @@ public class MQClientInstance {
                             }
                         }
                     } else {
+                        //自定义的topic路由信息查询
                         topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, 1000 * 3);
                     }
                     if (topicRouteData != null) {
@@ -661,12 +700,14 @@ public class MQClientInstance {
                          */
                         boolean changed = topicRouteDataIsChange(old, topicRouteData);
                         if (!changed) {
+                            //路由信息没有发生变化，判断是否需要更新topic路由信息，判断本地缓存表topic路由信息是否为空
                             changed = this.isNeedUpdateTopicRouteInfo(topic);
                         } else {
                             log.info("the topic[{}] route info changed, old[{}] ,new[{}]", topic, old, topicRouteData);
                         }
 
                         if (changed) {
+                            //更新本地缓存路由信息
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
@@ -675,9 +716,11 @@ public class MQClientInstance {
 
                             // Update Pub info
                             {
+                                //路由消息转换
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);
                                 Iterator<Entry<String, MQProducerInner>> it = this.producerTable.entrySet().iterator();
+                                //更新生产者组里面所有生产者的路由信息
                                 while (it.hasNext()) {
                                     Entry<String, MQProducerInner> entry = it.next();
                                     MQProducerInner impl = entry.getValue();
@@ -691,6 +734,7 @@ public class MQClientInstance {
                             }
 
                             // Update sub info
+                            //更新消费者组下面的所有消费者本地路由信息
                             {
                                 Set<MessageQueue> subscribeInfo = topicRouteData2TopicSubscribeInfo(topic, topicRouteData);
                                 Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
@@ -698,6 +742,7 @@ public class MQClientInstance {
                                     Entry<String, MQConsumerInner> entry = it.next();
                                     MQConsumerInner impl = entry.getValue();
                                     if (impl != null) {
+                                        //更新消费者组本地路由信息
                                         impl.updateTopicSubscribeInfo(topic, subscribeInfo);
                                     }
                                 }
@@ -825,6 +870,13 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 判断路由信息是否发生了变化
+     * @Date 11:25 2020/5/9
+     * @Param [olddata, nowdata]
+     * @return boolean
+     **/
     private boolean topicRouteDataIsChange(TopicRouteData olddata, TopicRouteData nowdata) {
         if (olddata == null || nowdata == null)
             return true;
@@ -838,6 +890,13 @@ public class MQClientInstance {
 
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 是否需要更新topic路由信息
+     * @Date 11:31 2020/5/9
+     * @Param [topic]
+     * @return boolean
+     **/
     private boolean isNeedUpdateTopicRouteInfo(final String topic) {
         boolean result = false;
         {
@@ -1068,6 +1127,13 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 从本地缓存表获取broker主节点地址
+     * @Date 14:36 2020/5/9
+     * @Param [brokerName]
+     * @return java.lang.String
+     **/
     public String findBrokerAddressInPublish(final String brokerName) {
         HashMap<Long/* brokerId */, String/* address */> map = this.brokerAddrTable.get(brokerName);
         if (map != null && !map.isEmpty()) {

@@ -266,6 +266,13 @@ public class MQClientAPIImpl {
 
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 创建topic信息
+     * @Date 17:03 2020/5/9
+     * @Param [addr, defaultTopic, topicConfig, timeoutMillis]
+     * @return void
+     **/
     public void createTopic(final String addr, final String defaultTopic, final TopicConfig topicConfig,
         final long timeoutMillis)
         throws RemotingException, MQBrokerException, InterruptedException, MQClientException {
@@ -418,6 +425,13 @@ public class MQClientAPIImpl {
 
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 发送消息，进行网络传输
+     * @Date 15:06 2020/5/9
+     * @Param [addr, brokerName, msg, requestHeader, timeoutMillis, communicationMode, context, producer]
+     * @return org.apache.rocketmq.client.producer.SendResult
+     **/
     public SendResult sendMessage(
         final String addr,
         final String brokerName,
@@ -513,6 +527,13 @@ public class MQClientAPIImpl {
         return null;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 同步发送消息
+     * @Date 15:17 2020/5/9
+     * @Param [addr, brokerName, msg, timeoutMillis, request]
+     * @return org.apache.rocketmq.client.producer.SendResult
+     **/
     private SendResult sendMessageSync(
         final String addr,
         final String brokerName,
@@ -525,6 +546,13 @@ public class MQClientAPIImpl {
         return this.processSendResponse(brokerName, msg, response);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 异步发送消息
+     * @Date 15:22 2020/5/9
+     * @Param [addr, brokerName, msg, timeoutMillis, request, sendCallback, topicPublishInfo, instance, retryTimesWhenSendFailed, times, context, producer]
+     * @return void
+     **/
     private void sendMessageAsync(
         final String addr,
         final String brokerName,
@@ -556,6 +584,7 @@ public class MQClientAPIImpl {
                     } catch (Throwable e) {
                     }
 
+                    //更新broker故障信息
                     producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), false);
                     return;
                 }
@@ -570,17 +599,21 @@ public class MQClientAPIImpl {
                         }
 
                         try {
+                            //执行异步发送的回调函数
                             sendCallback.onSuccess(sendResult);
                         } catch (Throwable e) {
                         }
 
+                        //更新broker故障信息
                         producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), false);
                     } catch (Exception e) {
+                        //更新broker故障信息
                         producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), true);
                         onExceptionImpl(brokerName, msg, timeoutMillis - cost, request, sendCallback, topicPublishInfo, instance,
                             retryTimesWhenSendFailed, times, e, context, false, producer);
                     }
                 } else {
+                    //更新broker故障信息
                     producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), true);
                     if (!responseFuture.isSendRequestOK()) {
                         MQClientException ex = new MQClientException("send request failed", responseFuture.getCause());
@@ -658,6 +691,13 @@ public class MQClientAPIImpl {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 发送结果处理
+     * @Date 15:22 2020/5/9
+     * @Param [brokerName, msg, response]
+     * @return org.apache.rocketmq.client.producer.SendResult
+     **/
     private SendResult processSendResponse(
         final String brokerName,
         final Message msg,
@@ -1110,6 +1150,13 @@ public class MQClientAPIImpl {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 结束事物请求
+     * @Date 18:00 2020/5/9
+     * @Param [addr, requestHeader, remark, timeoutMillis]
+     * @return void
+     **/
     public void endTransactionOneway(
         final String addr,
         final EndTransactionRequestHeader requestHeader,
@@ -1411,18 +1458,41 @@ public class MQClientAPIImpl {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 系统默认topic路由信息查询，topic不存在不抛出异常
+     * @Date 11:24 2020/5/9
+     * @Param [topic, timeoutMillis]
+     * @return org.apache.rocketmq.common.protocol.route.TopicRouteData
+     **/
     public TopicRouteData getDefaultTopicRouteInfoFromNameServer(final String topic, final long timeoutMillis)
         throws RemotingException, MQClientException, InterruptedException {
 
         return getTopicRouteInfoFromNameServer(topic, timeoutMillis, false);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 自定义topic路由信息查询，topic不存在抛出异常
+     * @Date 11:23 2020/5/9
+     * @Param [topic, timeoutMillis]
+     * @return org.apache.rocketmq.common.protocol.route.TopicRouteData
+     **/
     public TopicRouteData getTopicRouteInfoFromNameServer(final String topic, final long timeoutMillis)
         throws RemotingException, MQClientException, InterruptedException {
 
         return getTopicRouteInfoFromNameServer(topic, timeoutMillis, true);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description  向nameserver发送查询topic路由信息的请求
+     * @Date 11:19 2020/5/9
+     * @param timeoutMillis
+     * @param allowTopicNotExist  是否允许topic不存在
+     * @param topic
+     * @return org.apache.rocketmq.common.protocol.route.TopicRouteData
+     **/
     public TopicRouteData getTopicRouteInfoFromNameServer(final String topic, final long timeoutMillis,
         boolean allowTopicNotExist) throws MQClientException, InterruptedException, RemotingTimeoutException, RemotingSendRequestException, RemotingConnectException {
         GetRouteInfoRequestHeader requestHeader = new GetRouteInfoRequestHeader();

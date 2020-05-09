@@ -48,8 +48,12 @@ public class Validators {
     }
 
     /**
-     * Validate group
-     */
+     * @Author Qiu Rui
+     * @Description 校验消费者组名或者生产者组名的合法性  Validate group
+     * @Date 10:52 2020/5/9
+     * @Param [group]
+     * @return void
+     **/
     public static void checkGroup(String group) throws MQClientException {
         if (UtilAll.isBlank(group)) {
             throw new MQClientException("the specified group is blank", null);
@@ -78,6 +82,13 @@ public class Validators {
         return matcher.matches();
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 校验发送消息的规范
+     * @Date 10:49 2020/5/9
+     * @Param [msg, defaultMQProducer]
+     * @return void
+     **/
     public static void checkMessage(Message msg, DefaultMQProducer defaultMQProducer)
         throws MQClientException {
         if (null == msg) {
@@ -101,6 +112,13 @@ public class Validators {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 校验topic规范
+     * @Date 10:49 2020/5/9
+     * @Param [topic]
+     * @return void
+     **/
     public static void checkTopic(String topic) throws MQClientException {
         if (UtilAll.isBlank(topic)) {
             throw new MQClientException("The specified topic is blank", null);

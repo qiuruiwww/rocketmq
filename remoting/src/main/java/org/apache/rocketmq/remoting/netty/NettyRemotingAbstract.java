@@ -405,6 +405,13 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 发送同步消息，不需要加锁控制
+     * @Date 15:50 2020/5/9
+     * @Param [channel, request, timeoutMillis]
+     * @return org.apache.rocketmq.remoting.protocol.RemotingCommand
+     **/
     public RemotingCommand invokeSyncImpl(final Channel channel, final RemotingCommand request,
         final long timeoutMillis)
         throws InterruptedException, RemotingSendRequestException, RemotingTimeoutException {
@@ -431,6 +438,7 @@ public abstract class NettyRemotingAbstract {
                 }
             });
 
+            //超时时间内等待发送结果
             RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
@@ -447,6 +455,13 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 异步发送消息，信号量控制并发，客户端模式默认65535并发，server端模式默认64并发
+     * @Date 15:51 2020/5/9
+     * @Param [channel, request, timeoutMillis, invokeCallback]
+     * @return void
+     **/
     public void invokeAsyncImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis,
         final InvokeCallback invokeCallback)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
@@ -528,6 +543,13 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 发送单向消息，需要加锁控制，信号量控制并发，客户端模式默认65535并发，server端模式默认256并发
+     * @Date 15:52 2020/5/9
+     * @Param [channel, request, timeoutMillis]
+     * @return void
+     **/
     public void invokeOnewayImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
         request.markOnewayRPC();

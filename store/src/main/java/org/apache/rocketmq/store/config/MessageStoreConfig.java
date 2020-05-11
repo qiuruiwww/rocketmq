@@ -54,7 +54,10 @@ public class MessageStoreConfig {
 
     /**
      * introduced since 4.0.x. Determine whether to use mutex reentrantLock when putting message.<br/>
+     从4.0.x开始引入。确定放置消息时是否使用互斥体reentrantLock。
+
      * By default it is set to false indicating using spin lock when putting message.
+     * 默认情况下，它设置为false，表示在放置消息时使用自旋锁。
      */
     private boolean useReentrantLockWhenPutMessage = false;
 

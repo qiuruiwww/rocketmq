@@ -268,7 +268,7 @@ public class MappedFile extends ReferenceResource {
             AppendMessageResult result;
             if (messageExt instanceof MessageExtBrokerInner) {
                 /**
-                 * 将消息追加到内存中，需要根据市同步刷盘还是一部刷盘，将消息存储到磁盘中
+                 * 将消息追加到内存中，需要根据是同步刷盘还是异步刷盘，将消息存储到磁盘中
                  */
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, (MessageExtBrokerInner) messageExt);
             } else if (messageExt instanceof MessageExtBatch) {

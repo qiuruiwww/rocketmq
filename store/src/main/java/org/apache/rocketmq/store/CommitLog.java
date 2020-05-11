@@ -554,6 +554,13 @@ public class CommitLog {
         return beginTimeInLock;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 存储消息到磁盘
+     * @Date 14:18 2020/5/11
+     * @Param [msg]
+     * @return java.util.concurrent.CompletableFuture<org.apache.rocketmq.store.PutMessageResult>
+     **/
     public CompletableFuture<PutMessageResult> asyncPutMessage(final MessageExtBrokerInner msg) {
         // Set the storage time
         msg.setStoreTimestamp(System.currentTimeMillis());
@@ -664,7 +671,9 @@ public class CommitLog {
         storeStatsService.getSinglePutMessageTopicTimesTotal(msg.getTopic()).incrementAndGet();
         storeStatsService.getSinglePutMessageTopicSizeTotal(topic).addAndGet(result.getWroteBytes());
 
+        //提交刷盘请求
         CompletableFuture<PutMessageStatus> flushResultFuture = submitFlushRequest(result, putMessageResult, msg);
+        //主从同步请求
         CompletableFuture<PutMessageStatus> replicaResultFuture = submitReplicaRequest(result, putMessageResult, msg);
         return flushResultFuture.thenCombine(replicaResultFuture, (flushStatus, replicaStatus) -> {
             if (flushStatus != PutMessageStatus.PUT_OK) {
@@ -677,6 +686,13 @@ public class CommitLog {
         });
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 批量消息存储到磁盘
+     * @Date 14:25 2020/5/11
+     * @Param [messageExtBatch]
+     * @return java.util.concurrent.CompletableFuture<org.apache.rocketmq.store.PutMessageResult>
+     **/
     public CompletableFuture<PutMessageResult> asyncPutMessages(final MessageExtBatch messageExtBatch) {
         messageExtBatch.setStoreTimestamp(System.currentTimeMillis());
         AppendMessageResult result;
@@ -686,9 +702,11 @@ public class CommitLog {
         final int tranType = MessageSysFlag.getTransactionValue(messageExtBatch.getSysFlag());
 
         if (tranType != MessageSysFlag.TRANSACTION_NOT_TYPE) {
+            //批量发送不支持事物消息
             return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, null));
         }
         if (messageExtBatch.getDelayTimeLevel() > 0) {
+            //批量发送不支持延迟消息
             return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, null));
         }
 
@@ -765,7 +783,9 @@ public class CommitLog {
         storeStatsService.getSinglePutMessageTopicTimesTotal(messageExtBatch.getTopic()).addAndGet(result.getMsgNum());
         storeStatsService.getSinglePutMessageTopicSizeTotal(messageExtBatch.getTopic()).addAndGet(result.getWroteBytes());
 
+        //提交刷盘请求
         CompletableFuture<PutMessageStatus> flushOKFuture = submitFlushRequest(result, putMessageResult, messageExtBatch);
+        //提交数据同步请求
         CompletableFuture<PutMessageStatus> replicaOKFuture = submitReplicaRequest(result, putMessageResult, messageExtBatch);
         return flushOKFuture.thenCombine(replicaOKFuture, (flushStatus, replicaStatus) -> {
             if (flushStatus != PutMessageStatus.PUT_OK) {
@@ -841,7 +861,7 @@ public class CommitLog {
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
         /**
-         * 申请锁，消息写入commitlog文件时串行执行的
+         * 申请锁，消息写入commitlog文件时串行执行的，默认使用自旋锁
          */
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
@@ -919,12 +939,21 @@ public class CommitLog {
         storeStatsService.getSinglePutMessageTopicTimesTotal(msg.getTopic()).incrementAndGet();
         storeStatsService.getSinglePutMessageTopicSizeTotal(topic).addAndGet(result.getWroteBytes());
 
+        //开始刷盘
         handleDiskFlush(result, putMessageResult, msg);
+        //主从同步
         handleHA(result, putMessageResult, msg);
 
         return putMessageResult;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 刷盘请求
+     * @Date 14:15 2020/5/11
+     * @Param [result, putMessageResult, messageExt]
+     * @return java.util.concurrent.CompletableFuture<org.apache.rocketmq.store.PutMessageStatus>
+     **/
     public CompletableFuture<PutMessageStatus> submitFlushRequest(AppendMessageResult result, PutMessageResult putMessageResult,
                                                                   MessageExt messageExt) {
         // Synchronization flush
@@ -951,6 +980,13 @@ public class CommitLog {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 数据同步请求
+     * @Date 14:17 2020/5/11
+     * @Param [result, putMessageResult, messageExt]
+     * @return java.util.concurrent.CompletableFuture<org.apache.rocketmq.store.PutMessageStatus>
+     **/
     public CompletableFuture<PutMessageStatus> submitReplicaRequest(AppendMessageResult result, PutMessageResult putMessageResult,
                                                         MessageExt messageExt) {
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
@@ -972,6 +1008,13 @@ public class CommitLog {
     }
 
 
+    /**
+     * @Author Qiu Rui
+     * @Description 消息刷盘
+     * @Date 11:48 2020/5/11
+     * @Param [result, putMessageResult, messageExt]
+     * @return void
+     **/
     public void handleDiskFlush(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
         // Synchronization flush
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
@@ -1006,6 +1049,13 @@ public class CommitLog {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 主从数据同步
+     * @Date 11:49 2020/5/11
+     * @Param [result, putMessageResult, messageExt]
+     * @return void
+     **/
     public void handleHA(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();

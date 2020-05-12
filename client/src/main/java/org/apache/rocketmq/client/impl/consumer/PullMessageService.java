@@ -38,6 +38,9 @@ import org.apache.rocketmq.common.utils.ThreadUtils;
  */
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();
+    /**
+     * 拉取任务队列
+     */
     private final LinkedBlockingQueue<PullRequest> pullRequestQueue = new LinkedBlockingQueue<PullRequest>();
     private final MQClientInstance mQClientFactory;
     private final ScheduledExecutorService scheduledExecutorService = Executors
@@ -52,6 +55,13 @@ public class PullMessageService extends ServiceThread {
         this.mQClientFactory = mQClientFactory;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 延迟多少毫秒再加入队列
+     * @Date 9:58 2020/5/12
+     * @Param [pullRequest, timeDelay]
+     * @return void
+     **/
     public void executePullRequestLater(final PullRequest pullRequest, final long timeDelay) {
         if (!isStopped()) {
             this.scheduledExecutorService.schedule(new Runnable() {
@@ -65,6 +75,13 @@ public class PullMessageService extends ServiceThread {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 立即存入队列
+     * @Date 9:57 2020/5/12
+     * @Param [pullRequest]
+     * @return void
+     **/
     public void executePullRequestImmediately(final PullRequest pullRequest) {
         try {
             this.pullRequestQueue.put(pullRequest);
@@ -115,6 +132,7 @@ public class PullMessageService extends ServiceThread {
 
         while (!this.isStopped()) {
             try {
+                //take()方法，当LinkedBlockingQueue为空，阻塞
                 PullRequest pullRequest = this.pullRequestQueue.take();
                 /**
                  * 拉取消息

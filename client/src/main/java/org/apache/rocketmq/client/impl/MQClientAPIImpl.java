@@ -858,6 +858,13 @@ public class MQClientAPIImpl {
         });
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 同步拉取消息
+     * @Date 18:20 2020/5/12
+     * @Param [addr, request, timeoutMillis]
+     * @return org.apache.rocketmq.client.consumer.PullResult
+     **/
     private PullResult pullMessageSync(
         final String addr,
         final RemotingCommand request,

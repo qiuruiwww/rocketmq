@@ -793,9 +793,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 break;
         }
 
+        //更新所有topic的路由信息
         this.updateTopicSubscribeInfoWhenSubscriptionChanged();
+        //检查过滤模式broker是否支持
         this.mQClientFactory.checkClientInBroker();
+        //发送心跳
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
+        //消费者立即参与负载
         this.mQClientFactory.rebalanceImmediately();
     }
 
@@ -1013,6 +1017,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return messageListenerInner;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 更新所有topic的路由信息
+     * @Date 9:39 2020/5/13
+     * @Param []
+     * @return void
+     **/
     private void updateTopicSubscribeInfoWhenSubscriptionChanged() {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {

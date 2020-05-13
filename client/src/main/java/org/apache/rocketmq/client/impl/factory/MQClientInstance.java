@@ -116,6 +116,9 @@ public class MQClientInstance {
      * 消息拉取服务线程，该线程只为PUSH模式服务
      **/
     private final PullMessageService pullMessageService;
+    /**
+     * 消息队列负载线程
+     **/
     private final RebalanceService rebalanceService;
     private final DefaultMQProducer defaultMQProducer;
     private final ConsumerStatsManager consumerStatsManager;
@@ -475,6 +478,13 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 检查过滤模式broker是否支持
+     * @Date 9:59 2020/5/13
+     * @Param []
+     * @return void
+     **/
     public void checkClientInBroker() throws MQClientException {
         Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
 
@@ -491,6 +501,7 @@ public class MQClientInstance {
                 }
                 // may need to check one broker every cluster...
                 // assume that the configs of every broker in cluster are the the same.
+                //通过取模算法获取一个topic所在broker的地址
                 String addr = findBrokerAddrByTopic(subscriptionData.getTopic());
 
                 if (addr != null) {
@@ -513,6 +524,13 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 发送心跳
+     * @Date 9:51 2020/5/13
+     * @Param []
+     * @return void
+     **/
     public void sendHeartbeatToAllBrokerWithLock() {
         if (this.lockHeartbeat.tryLock()) {
             try {
@@ -586,6 +604,13 @@ public class MQClientInstance {
         return false;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 发送心跳
+     * @Date 9:51 2020/5/13
+     * @Param []
+     * @return void
+     **/
     private void sendHeartbeatToAllBroker() {
         final HeartbeatData heartbeatData = this.prepareHeartbeatData();
         final boolean producerEmpty = heartbeatData.getProducerDataSet().isEmpty();
@@ -1201,6 +1226,13 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 获取topic所在broker地址
+     * @Date 9:53 2020/5/13
+     * @Param [topic]
+     * @return java.lang.String
+     **/
     public String findBrokerAddrByTopic(final String topic) {
         TopicRouteData topicRouteData = this.topicRouteTable.get(topic);
         if (topicRouteData != null) {

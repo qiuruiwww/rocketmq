@@ -151,6 +151,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * Subscription relationship
      *
      * 订阅信息
+     * sub expression:
+     * 过滤表达式   tag1 || tag2 || tag3
      */
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
@@ -171,7 +173,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Minimum consumer thread number
      *
-     * 消费者最新线程数
+     * 消费者最小线程数
      */
     private int consumeThreadMin = 20;
 
@@ -219,6 +221,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * <p>
      * For example, if the value of pullThresholdForTopic is 1000 and 10 message queues are assigned to this consumer,
      * then pullThresholdForQueue will be set to 100
+     *
+     * 例如，如果pullThresholdForTopic的值为1000，并且为此用户分配了10个消息队列，则pullThresholdForQueue将设置为100
      */
     private int pullThresholdForTopic = -1;
 

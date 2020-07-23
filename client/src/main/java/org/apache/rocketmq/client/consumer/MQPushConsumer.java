@@ -27,11 +27,15 @@ import org.apache.rocketmq.client.exception.MQClientException;
 public interface MQPushConsumer extends MQConsumer {
     /**
      * Start the consumer
+     *
+     * 启动消费者
      */
     void start() throws MQClientException;
 
     /**
      * Shutdown the consumer
+     *
+     * 关闭消费者
      */
     void shutdown();
 
@@ -114,16 +118,22 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Update the consumer thread pool size Dynamically
+     *
+     * 动态更新使用者线程池大小
      */
     void updateCorePoolSize(int corePoolSize);
 
     /**
      * Suspend the consumption
+     *
+     * 暂定消费
      */
     void suspend();
 
     /**
      * Resume the consumption
+     *
+     * 恢复消费
      */
     void resume();
 }

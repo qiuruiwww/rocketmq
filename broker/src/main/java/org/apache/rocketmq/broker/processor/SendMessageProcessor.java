@@ -320,6 +320,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setTopic(requestHeader.getTopic());
         msgInner.setQueueId(queueIdInt);
 
+        //重试消息死信处理
         if (!handleRetryAndDLQ(requestHeader, response, request, msgInner, topicConfig)) {
             return CompletableFuture.completedFuture(response);
         }
@@ -349,6 +350,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             //普通消息存储处理
             putMessageResult = this.brokerController.getMessageStore().asyncPutMessage(msgInner);
         }
+        //消息状态转换
         return handlePutMessageResultFuture(putMessageResult, response, request, msgInner, responseHeader, mqtraceContext, ctx, queueIdInt);
     }
 
@@ -365,6 +367,13 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         );
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 重试次数超过最大重试次数则加入死信队列
+     * @Date 14:29 2020/7/22
+     * @Param [requestHeader, response, request, msg, topicConfig]
+     * @return boolean
+     **/
     private boolean handleRetryAndDLQ(SendMessageRequestHeader requestHeader, RemotingCommand response,
                                       RemotingCommand request,
                                       MessageExt msg, TopicConfig topicConfig) {

@@ -29,6 +29,8 @@ public interface MQAdmin {
     /**
      * Creates an topic
      *
+     * 创建一个topic
+     *
      * @param key accesskey
      * @param newTopic topic name
      * @param queueNum topic's queue number
@@ -38,6 +40,8 @@ public interface MQAdmin {
 
     /**
      * Creates an topic
+     *
+     * 创建一个topic
      *
      * @param key accesskey
      * @param newTopic topic name

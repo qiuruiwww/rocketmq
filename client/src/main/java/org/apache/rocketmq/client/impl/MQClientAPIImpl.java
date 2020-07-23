@@ -634,6 +634,13 @@ public class MQClientAPIImpl {
         });
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 异常处理，重试处理
+     * @Date 11:08 2020/7/22
+     * @Param [brokerName, msg, timeoutMillis, request, sendCallback, topicPublishInfo, instance, timesTotal, curTimes, e, context, needRetry, producer]
+     * @return void
+     **/
     private void onExceptionImpl(final String brokerName,
         final Message msg,
         final long timeoutMillis,
@@ -649,6 +656,7 @@ public class MQClientAPIImpl {
         final DefaultMQProducerImpl producer
     ) {
         int tmp = curTimes.incrementAndGet();
+        //异步重试发送
         if (needRetry && tmp <= timesTotal) {
             String retryBrokerName = brokerName;//by default, it will send to the same broker
             if (topicPublishInfo != null) { //select one message queue accordingly, in order to determine which broker to send
@@ -1180,6 +1188,7 @@ public class MQClientAPIImpl {
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.END_TRANSACTION, requestHeader);
 
         request.setRemark(remark);
+        //结束事务居然是单向发送
         this.remotingClient.invokeOneway(addr, request, timeoutMillis);
     }
 

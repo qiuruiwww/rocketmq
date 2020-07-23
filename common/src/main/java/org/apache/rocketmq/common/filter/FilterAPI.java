@@ -36,6 +36,13 @@ public class FilterAPI {
         return simple;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 构建订阅信息
+     * @Date 14:34 2020/7/21
+     * @Param [consumerGroup, topic, subString]
+     * @return org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData
+     **/
     public static SubscriptionData buildSubscriptionData(final String consumerGroup, String topic,
         String subString) throws Exception {
         SubscriptionData subscriptionData = new SubscriptionData();

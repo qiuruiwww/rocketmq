@@ -84,11 +84,13 @@ public class ProcessQueue {
      * 上一次消息消费时间戳
      */
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
+    //消息队列锁定状态，顺序消费时必须锁定消费队列
     private volatile boolean locked = false;
     /**
      * 上一次锁定时间戳
      */
     private volatile long lastLockTimestamp = System.currentTimeMillis();
+    //是否真正消费
     private volatile boolean consuming = false;
     private volatile long msgAccCnt = 0;
 
@@ -125,6 +127,7 @@ public class ProcessQueue {
             try {
                 this.lockTreeMap.readLock().lockInterruptibly();
                 try {
+                    //判断是否消费超时
                     if (!msgTreeMap.isEmpty() && System.currentTimeMillis() - Long.parseLong(MessageAccessor.getConsumeStartTimeStamp(msgTreeMap.firstEntry().getValue())) > pushConsumer.getConsumeTimeout() * 60 * 1000) {
                         msg = msgTreeMap.firstEntry().getValue();
                     } else {
@@ -212,7 +215,7 @@ public class ProcessQueue {
     }
 
     /**
-     * 获取当前消息最大间隔
+     * 获取当前最大间隔
      *
      * @return
      */

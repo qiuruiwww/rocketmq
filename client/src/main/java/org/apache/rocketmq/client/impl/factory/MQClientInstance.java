@@ -332,7 +332,9 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    //移除不在线的broker
                     MQClientInstance.this.cleanOfflineBroker();
+                    //发送心跳到所有的broker
                     MQClientInstance.this.sendHeartbeatToAllBrokerWithLock();
                 } catch (Exception e) {
                     log.error("ScheduledTask sendHeartbeatToAllBroker exception", e);
@@ -356,11 +358,15 @@ public class MQClientInstance {
             }
         }, 1000 * 10, this.clientConfig.getPersistConsumerOffsetInterval(), TimeUnit.MILLISECONDS);
 
+        /**
+         * 动态调整线程池，只对推模式消费有作用
+         */
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
                 try {
+                    //动态调整线程池
                     MQClientInstance.this.adjustThreadPool();
                 } catch (Exception e) {
                     log.error("ScheduledTask adjustThreadPool exception", e);
@@ -433,6 +439,8 @@ public class MQClientInstance {
 
     /**
      * Remove offline broker
+     *
+     * 移除不在线的broker
      */
     private void cleanOfflineBroker() {
         try {

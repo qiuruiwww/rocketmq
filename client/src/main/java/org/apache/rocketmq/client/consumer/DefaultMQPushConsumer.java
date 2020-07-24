@@ -186,6 +186,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Threshold for dynamic adjustment of the number of thread pool
+     *
+     * 动态调整线程池数量的阈值
      */
     private long adjustThreadPoolNumsThreshold = 100000;
 
@@ -277,7 +279,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * If messages are re-consumed more than {@link #maxReconsumeTimes} before success, it's be directed to a deletion
      * queue waiting.
      *
-     * 最大消费重试次数，如果超过此次数还未成功，则将该消息转入一个失败队列，等待删除
+     * 最大消费重试次数，如果超过此次数还未成功，则将该消息转入一个死信队列，等待删除
      */
     private int maxReconsumeTimes = -1;
 
@@ -297,6 +299,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Interface of asynchronous transfer data
+     *
+     * 异步传输数据接口
      */
     private TraceDispatcher traceDispatcher = null;
 
@@ -718,6 +722,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
         this.defaultMQPushConsumerImpl.sendMessageBack(msg, delayLevel, brokerName);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 获取消费者对主题topic分配了那些消息队列
+     * @Date 11:18 2020/7/24
+     * @Param [topic]
+     * @return java.util.Set<org.apache.rocketmq.common.message.MessageQueue>
+     **/
     @Override
     public Set<MessageQueue> fetchSubscribeMessageQueues(String topic) throws MQClientException {
         return this.defaultMQPushConsumerImpl.fetchSubscribeMessageQueues(withNamespace(topic));
@@ -843,6 +854,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Suspend pulling new messages.
+     *
+     * 暂停拉取新消息
      */
     @Override
     public void suspend() {
@@ -851,6 +864,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Resume pulling.
+     *
+     * 恢复拉取消息，需要重新负载消息对
      */
     @Override
     public void resume() {

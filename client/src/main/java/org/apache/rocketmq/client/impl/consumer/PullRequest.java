@@ -36,7 +36,7 @@ public class PullRequest {
      */
     private long nextOffset;
     /**
-     * 是否被锁定
+     * 是否是第一次锁定
      */
     private boolean lockedFirst = false;
 

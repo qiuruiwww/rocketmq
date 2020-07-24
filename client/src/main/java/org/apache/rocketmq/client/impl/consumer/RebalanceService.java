@@ -45,6 +45,7 @@ public class RebalanceService extends ServiceThread {
 
         while (!this.isStopped()) {
             this.waitForRunning(waitInterval);
+            //消息队列重新负载
             this.mqClientFactory.doRebalance();
         }
 

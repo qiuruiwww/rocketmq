@@ -101,13 +101,16 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
      */
     private final RebalanceImpl rebalanceImpl = new RebalancePushImpl(this);
     private final ArrayList<FilterMessageHook> filterMessageHookList = new ArrayList<FilterMessageHook>();
+    //消费者开始
     private final long consumerStartTimestamp = System.currentTimeMillis();
     private final ArrayList<ConsumeMessageHook> consumeMessageHookList = new ArrayList<ConsumeMessageHook>();
     private final RPCHook rpcHook;
     private volatile ServiceState serviceState = ServiceState.CREATE_JUST;
     private MQClientInstance mQClientFactory;
     private PullAPIWrapper pullAPIWrapper;
+    //请求是否被挂起
     private volatile boolean pause = false;
+    //是否顺序消费
     private boolean consumeOrderly = false;
     private MessageListener messageListenerInner;
     private OffsetStore offsetStore;
@@ -219,6 +222,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
      * @param pullRequest
      */
     public void pullMessage(final PullRequest pullRequest) {
+        //处理队列
         final ProcessQueue processQueue = pullRequest.getProcessQueue();
         /**
          * 当前processQueue 是否被丢弃
@@ -228,6 +232,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             return;
         }
 
+        //重置处理队列上一次拉取时间戳属性
         pullRequest.getProcessQueue().setLastPullTimestamp(System.currentTimeMillis());
 
         try {
@@ -237,7 +242,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             this.makeSureStateOK();
         } catch (MQClientException e) {
             log.warn("pullMessage exception, consumer state not ok", e);
-            //发生异常时将请求延迟3秒重新放入队列
+            //发生异常时将请求延迟3秒重新放入拉取队列
             this.executePullRequestLater(pullRequest, pullTimeDelayMillsWhenException);
             return;
         }
@@ -252,7 +257,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             return;
         }
 
+        //处理队列中的消息数量
         long cachedMessageCount = processQueue.getMsgCount().get();
+        //处理队列中的消息大小
         long cachedMessageSizeInMiB = processQueue.getMsgSize().get() / (1024 * 1024);
 
         /**
@@ -304,6 +311,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         } else {
             /**
              * 顺序消息处理逻辑，判断消息队列是否被锁定
+             * （（（（（顺序消息消费需要锁定处理队列）））））
              */
             if (processQueue.isLocked()) {
                 if (!pullRequest.isLockedFirst()) {

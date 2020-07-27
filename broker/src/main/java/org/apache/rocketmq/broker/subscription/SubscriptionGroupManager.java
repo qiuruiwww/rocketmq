@@ -109,6 +109,13 @@ public class SubscriptionGroupManager extends ConfigManager {
         this.persist();
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 禁用消费者组
+     * @Date 17:09 2020/7/27
+     * @Param [groupName]
+     * @return void
+     **/
     public void disableConsume(final String groupName) {
         SubscriptionGroupConfig old = this.subscriptionGroupTable.get(groupName);
         if (old != null) {

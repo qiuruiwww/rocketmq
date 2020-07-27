@@ -73,8 +73,16 @@ public class NamesrvController {
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description name server初始化
+     * @Date 11:05 2020/7/27
+     * @Param []
+     * @return boolean
+     **/
     public boolean initialize() {
 
+        //加载kv配置文件到内存
         this.kvConfigManager.load();
 
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
@@ -82,6 +90,7 @@ public class NamesrvController {
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        //注册处理器
         this.registerProcessor();
 
         /**

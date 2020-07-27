@@ -87,6 +87,13 @@ public class BrokerStartup {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 创建BrokerController
+     * @Date 11:34 2020/7/27
+     * @Param [args]
+     * @return org.apache.rocketmq.broker.BrokerController
+     **/
     public static BrokerController createBrokerController(String[] args) {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
@@ -219,6 +226,7 @@ public class BrokerStartup {
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
 
+            //初始化BrokerController
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();

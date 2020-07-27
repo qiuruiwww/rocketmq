@@ -42,12 +42,14 @@ public class BrokerConfig {
     private long brokerId = MixAll.MASTER_ID;
     private int brokerPermission = PermName.PERM_READ | PermName.PERM_WRITE;
     private int defaultTopicQueueNums = 8;
+    //是否自动创建topic信息
     @ImportantField
     private boolean autoCreateTopicEnable = true;
 
     private boolean clusterTopicEnable = true;
 
     private boolean brokerTopicEnable = true;
+    //是否自动创建消费者订阅信息
     @ImportantField
     private boolean autoCreateSubscriptionGroup = true;
     private String messageStorePlugIn = "";
@@ -78,6 +80,7 @@ public class BrokerConfig {
 
     private int flushConsumerOffsetHistoryInterval = 1000 * 60;
 
+    //是否拒绝事务消息
     @ImportantField
     private boolean rejectTransactionMessage = false;
     @ImportantField
@@ -114,10 +117,12 @@ public class BrokerConfig {
     private int maxDelayTime = 40;
 
     private String regionId = MixAll.DEFAULT_TRACE_REGION_ID;
+    //注册broker超时时间
     private int registerBrokerTimeoutMills = 6000;
 
     private boolean slaveReadEnable = false;
 
+    //如果消费组消息消费堆积是否禁用该消费组继续消费消息
     private boolean disableConsumeIfConsumerReadSlowly = false;
     private long consumerFallbehindThreshold = 1024L * 1024 * 1024 * 16;
 
@@ -179,6 +184,8 @@ public class BrokerConfig {
 
     /**
      * Transaction message check interval.
+     *
+     * 事务回查间隔时间1分钟
      */
     @ImportantField
     private long transactionCheckInterval = 60 * 1000;

@@ -156,6 +156,13 @@ public class TopicConfigManager extends ConfigManager {
         return this.topicConfigTable.get(topic);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 创建topic
+     * @Date 18:12 2020/7/27
+     * @Param [topic, defaultTopic, remoteAddress, clientDefaultTopicQueueNums, topicSysFlag]
+     * @return org.apache.rocketmq.common.TopicConfig
+     **/
     public TopicConfig createTopicInSendMessageMethod(final String topic, final String defaultTopic,
         final String remoteAddress, final int clientDefaultTopicQueueNums, final int topicSysFlag) {
         TopicConfig topicConfig = null;
@@ -171,6 +178,7 @@ public class TopicConfigManager extends ConfigManager {
                     TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic);
                     if (defaultTopicConfig != null) {
                         if (defaultTopic.equals(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC)) {
+                            //是否开启自动创建topic
                             if (!this.brokerController.getBrokerConfig().isAutoCreateTopicEnable()) {
                                 defaultTopicConfig.setPerm(PermName.PERM_READ | PermName.PERM_WRITE);
                             }
@@ -207,12 +215,14 @@ public class TopicConfigManager extends ConfigManager {
                         log.info("Create new topic by default topic:[{}] config:[{}] producer:[{}]",
                             defaultTopic, topicConfig, remoteAddress);
 
+                        //topic数据放入内存
                         this.topicConfigTable.put(topic, topicConfig);
 
                         this.dataVersion.nextVersion();
 
                         createNew = true;
 
+                        //持久化topic数据到磁盘
                         this.persist();
                     }
                 } finally {
@@ -357,6 +367,13 @@ public class TopicConfigManager extends ConfigManager {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 更新topic信息
+     * @Date 17:41 2020/7/27
+     * @Param [topicConfig]
+     * @return void
+     **/
     public void updateTopicConfig(final TopicConfig topicConfig) {
         TopicConfig old = this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
         if (old != null) {

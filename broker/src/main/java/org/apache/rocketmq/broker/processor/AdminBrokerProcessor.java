@@ -245,6 +245,13 @@ public class AdminBrokerProcessor extends AsyncNettyRequestProcessor implements 
         return false;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 创建更新topic信息
+     * @Date 17:41 2020/7/27
+     * @Param [ctx, request]
+     * @return org.apache.rocketmq.remoting.protocol.RemotingCommand
+     **/
     private synchronized RemotingCommand updateAndCreateTopic(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
@@ -281,8 +288,10 @@ public class AdminBrokerProcessor extends AsyncNettyRequestProcessor implements 
         topicConfig.setPerm(requestHeader.getPerm());
         topicConfig.setTopicSysFlag(requestHeader.getTopicSysFlag() == null ? 0 : requestHeader.getTopicSysFlag());
 
+        //更新topic信息到内存然后再持久化到磁盘
         this.brokerController.getTopicConfigManager().updateTopicConfig(topicConfig);
 
+        //增量注册topic信息
         this.brokerController.registerIncrementBrokerData(topicConfig, this.brokerController.getTopicConfigManager().getDataVersion());
 
         return null;

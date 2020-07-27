@@ -220,23 +220,32 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
+     * @Author Qiu Rui
+     * @Description 加载存储相关的文件
+     * @Date 16:33 2020/7/27
+     * @Param
      * @throws IOException
-     */
+     * @return
+     **/
     public boolean load() {
         boolean result = true;
 
         try {
+            //判断abort文件是否存在，存在即为正常关闭，不存在就为异常关闭
             boolean lastExitOK = !this.isTempFileExist();
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
 
             if (null != scheduleMessageService) {
+                //延迟队列加载delayOffset.json文件数据到内存，并且延迟级别 delayLevelTable 数据构造
                 result = result && this.scheduleMessageService.load();
             }
 
             // load Commit Log
+            //加载commitLog文件数据
             result = result && this.commitLog.load();
 
             // load Consume Queue
+            //加载ConsumeQueue数据 consumequeue
             result = result && this.loadConsumeQueue();
 
             if (result) {
@@ -1455,6 +1464,13 @@ public class DefaultMessageStore implements MessageStore {
         return file.exists();
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 加载ConsumeQueue数据
+     * @Date 16:16 2020/7/27
+     * @Param []
+     * @return boolean
+     **/
     private boolean loadConsumeQueue() {
         File dirLogic = new File(StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()));
         File[] fileTopicList = dirLogic.listFiles();

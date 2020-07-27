@@ -22,10 +22,12 @@ import org.apache.rocketmq.store.ConsumeQueue;
 
 public class MessageStoreConfig {
     //The root directory in which the log data is kept
+    //存储根路径
     @ImportantField
     private String storePathRootDir = System.getProperty("user.home") + File.separator + "store";
 
     //The directory in which the commitlog is kept
+    //CommitLog文件存储路径
     @ImportantField
     private String storePathCommitLog = System.getProperty("user.home") + File.separator + "store"
         + File.separator + "commitlog";
@@ -44,6 +46,7 @@ public class MessageStoreConfig {
 
     // CommitLog flush interval
     // flush data to disk
+    //CommitLog刷盘时间间隔
     @ImportantField
     private int flushIntervalCommitLog = 500;
 

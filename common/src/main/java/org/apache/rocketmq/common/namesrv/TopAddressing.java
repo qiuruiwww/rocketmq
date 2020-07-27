@@ -60,10 +60,24 @@ public class TopAddressing {
         return newString;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description http请求拉取NameServer地址数据
+     * @Date 17:20 2020/7/27
+     * @Param []
+     * @return java.lang.String
+     **/
     public final String fetchNSAddr() {
         return fetchNSAddr(true, 3000);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description http请求拉取NameServer地址数据
+     * @Date 17:20 2020/7/27
+     * @Param [verbose, timeoutMills]
+     * @return java.lang.String
+     **/
     public final String fetchNSAddr(boolean verbose, long timeoutMills) {
         String url = this.wsAddr;
         try {

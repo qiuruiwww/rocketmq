@@ -26,6 +26,13 @@ public abstract class ConfigManager {
 
     public abstract String encode();
 
+    /**
+     * @Author Qiu Rui
+     * @Description 加载文件到内存
+     * @Date 11:52 2020/7/27
+     * @Param []
+     * @return boolean
+     **/
     public boolean load() {
         String fileName = null;
         try {
@@ -67,6 +74,13 @@ public abstract class ConfigManager {
 
     public abstract void decode(final String jsonString);
 
+    /**
+     * @Author Qiu Rui
+     * @Description consumerOffset刷盘持久化到磁盘文件
+     * @Date 17:04 2020/7/27
+     * @Param []
+     * @return void
+     **/
     public synchronized void persist() {
         String jsonString = this.encode(true);
         if (jsonString != null) {

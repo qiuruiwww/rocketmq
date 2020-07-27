@@ -201,6 +201,7 @@ public class ScheduleMessageService extends ConfigManager {
     public boolean load() {
         /**
          * 延迟消息消费队列消息进度的加载
+         * 加载delayOffset.json文件数据到内存
          */
         boolean result = super.load();
         /**

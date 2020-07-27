@@ -84,6 +84,13 @@ public class BrokerOuterAPI {
         this.brokerOuterExecutor.shutdown();
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description http请求拉取NameServer地址数据
+     * @Date 17:20 2020/7/27
+     * @Param []
+     * @return java.lang.String
+     **/
     public String fetchNameServerAddr() {
         try {
             String addrs = this.topAddressing.fetchNSAddr();
@@ -101,6 +108,13 @@ public class BrokerOuterAPI {
         return nameSrvAddr;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 更新NameServer地址列表
+     * @Date 17:18 2020/7/27
+     * @Param [addrs]
+     * @return void
+     **/
     public void updateNameServerAddressList(final String addrs) {
         List<String> lst = new ArrayList<String>();
         String[] addrArray = addrs.split(";");
@@ -111,6 +125,13 @@ public class BrokerOuterAPI {
         this.remotingClient.updateNameServerAddressList(lst);
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 注册所有的broker信息
+     * @Date 10:45 2020/7/27
+     * @Param [clusterName, brokerAddr, brokerName, brokerId, haServerAddr, topicConfigWrapper, filterServerList, oneway, timeoutMills, compressed]
+     * @return java.util.List<org.apache.rocketmq.common.namesrv.RegisterBrokerResult>
+     **/
     public List<RegisterBrokerResult> registerBrokerAll(
         final String clusterName,
         final String brokerAddr,
@@ -153,6 +174,7 @@ public class BrokerOuterAPI {
                     @Override
                     public void run() {
                         try {
+                            //注册broker
                             RegisterBrokerResult result = registerBroker(namesrvAddr,oneway, timeoutMills,requestHeader,body);
                             if (result != null) {
                                 registerBrokerResultList.add(result);
@@ -177,6 +199,13 @@ public class BrokerOuterAPI {
         return registerBrokerResultList;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 注册broker
+     * @Date 10:58 2020/7/27
+     * @Param [namesrvAddr, oneway, timeoutMills, requestHeader, body]
+     * @return org.apache.rocketmq.common.namesrv.RegisterBrokerResult
+     **/
     private RegisterBrokerResult registerBroker(
         final String namesrvAddr,
         final boolean oneway,
@@ -193,6 +222,7 @@ public class BrokerOuterAPI {
 
         if (oneway) {
             try {
+                //单向发送，不需要关系发送结果，并发度默认为65535
                 this.remotingClient.invokeOneway(namesrvAddr, request, timeoutMills);
             } catch (RemotingTooMuchRequestException e) {
                 // Ignore
@@ -200,6 +230,7 @@ public class BrokerOuterAPI {
             return null;
         }
 
+        //同步发送
         RemotingCommand response = this.remotingClient.invokeSync(namesrvAddr, request, timeoutMills);
         assert response != null;
         switch (response.getCode()) {
@@ -221,6 +252,13 @@ public class BrokerOuterAPI {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 删除掉注册的所有broker信息
+     * @Date 17:33 2020/7/27
+     * @Param [clusterName, brokerAddr, brokerName, brokerId]
+     * @return void
+     **/
     public void unregisterBrokerAll(
         final String clusterName,
         final String brokerAddr,
@@ -240,6 +278,13 @@ public class BrokerOuterAPI {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 删除broker
+     * @Date 17:34 2020/7/27
+     * @Param [namesrvAddr, clusterName, brokerAddr, brokerName, brokerId]
+     * @return void
+     **/
     public void unregisterBroker(
         final String namesrvAddr,
         final String clusterName,
@@ -267,6 +312,13 @@ public class BrokerOuterAPI {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 判断是否需要注册
+     * @Date 10:45 2020/7/27
+     * @Param [clusterName, brokerAddr, brokerName, brokerId, topicConfigWrapper, timeoutMills]
+     * @return java.util.List<java.lang.Boolean>
+     **/
     public List<Boolean> needRegister(
         final String clusterName,
         final String brokerAddr,

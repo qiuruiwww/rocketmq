@@ -124,10 +124,19 @@ public class SubscriptionGroupManager extends ConfigManager {
         }
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 查找订阅信息
+     * @Date 9:46 2020/7/28
+     * @Param [group]
+     * @return org.apache.rocketmq.common.subscription.SubscriptionGroupConfig
+     **/
     public SubscriptionGroupConfig findSubscriptionGroupConfig(final String group) {
         SubscriptionGroupConfig subscriptionGroupConfig = this.subscriptionGroupTable.get(group);
         if (null == subscriptionGroupConfig) {
+            //判断是否自动创建消费者组
             if (brokerController.getBrokerConfig().isAutoCreateSubscriptionGroup() || MixAll.isSysConsumerGroup(group)) {
+                //创建消费者组
                 subscriptionGroupConfig = new SubscriptionGroupConfig();
                 subscriptionGroupConfig.setGroupName(group);
                 SubscriptionGroupConfig preConfig = this.subscriptionGroupTable.putIfAbsent(group, subscriptionGroupConfig);
@@ -135,6 +144,7 @@ public class SubscriptionGroupManager extends ConfigManager {
                     log.info("auto create a subscription group, {}", subscriptionGroupConfig.toString());
                 }
                 this.dataVersion.nextVersion();
+                //持久化消费者组到磁盘文件
                 this.persist();
             }
         }

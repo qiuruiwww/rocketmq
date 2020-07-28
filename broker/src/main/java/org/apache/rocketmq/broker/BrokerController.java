@@ -1009,6 +1009,7 @@ public class BrokerController {
             this.brokerStatsManager.start();
         }
 
+        //broker快速失败定时任务启动，10毫秒执行一次
         if (this.brokerFastFailure != null) {
             this.brokerFastFailure.start();
         }

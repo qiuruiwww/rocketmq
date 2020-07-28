@@ -234,12 +234,20 @@ public class TopicConfigManager extends ConfigManager {
         }
 
         if (createNew) {
+            //注册到nameserver
             this.brokerController.registerBrokerAll(false, true, true);
         }
 
         return topicConfig;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 创建topic并注册到nameserver
+     * @Date 15:41 2020/7/28
+     * @Param [topic, clientDefaultTopicQueueNums, perm, topicSysFlag]
+     * @return org.apache.rocketmq.common.TopicConfig
+     **/
     public TopicConfig createTopicInSendMessageBackMethod(
         final String topic,
         final int clientDefaultTopicQueueNums,
@@ -265,6 +273,7 @@ public class TopicConfigManager extends ConfigManager {
                     topicConfig.setTopicSysFlag(topicSysFlag);
 
                     log.info("create new topic {}", topicConfig);
+                    //放入内存
                     this.topicConfigTable.put(topic, topicConfig);
                     createNew = true;
                     this.dataVersion.nextVersion();
@@ -278,6 +287,7 @@ public class TopicConfigManager extends ConfigManager {
         }
 
         if (createNew) {
+            //注册到nameserver
             this.brokerController.registerBrokerAll(false, true, true);
         }
 
@@ -384,6 +394,7 @@ public class TopicConfigManager extends ConfigManager {
 
         this.dataVersion.nextVersion();
 
+        //持久化到磁盘
         this.persist();
     }
 

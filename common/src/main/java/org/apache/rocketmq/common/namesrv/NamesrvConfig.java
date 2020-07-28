@@ -34,14 +34,17 @@ public class NamesrvConfig {
      */
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));
     /**
-     * nameserver存储kv配置属性的持久化路径
+     * kv配置文件路径，包含顺序消息主题的配置信息
      */
     private String kvConfigPath = System.getProperty("user.home") + File.separator + "namesrv" + File.separator + "kvConfig.json";
     /**
-     * 默认配置文件路径
+     * NameServer配置文件路径，建议使用-c指定NameServer配置文件路径
      */
     private String configStorePath = System.getProperty("user.home") + File.separator + "namesrv" + File.separator + "namesrv.properties";
     private String productEnvName = "center";
+    /**
+     * 是否开启集群测试，默认为false
+     */
     private boolean clusterTest = false;
     /**
      * 是否支持顺序消息，默认不支持

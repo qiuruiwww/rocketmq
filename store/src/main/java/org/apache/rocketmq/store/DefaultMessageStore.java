@@ -597,6 +597,13 @@ public class DefaultMessageStore implements MessageStore {
         return result;
     }
 
+    /**
+     * @Author Qiu Rui
+     * @Description 检查操作系统页面缓存是否繁忙
+     * @Date 9:51 2020/7/28
+     * @Param []
+     * @return boolean
+     **/
     @Override
     public boolean isOSPageCacheBusy() {
         long begin = this.getCommitLog().getBeginTimeInLock();

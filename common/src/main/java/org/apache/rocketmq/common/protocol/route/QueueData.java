@@ -34,11 +34,11 @@ public class QueueData implements Comparable<QueueData> {
      */
     private int writeQueueNums;
     /**
-     * 读写权限
+     * 读写权限  4 可读  2  可写  1 自动创建topic
      */
     private int perm;
     /**
-     * topic同步标记
+     * topic标记(暂时未使用)
      */
     private int topicSynFlag;
 

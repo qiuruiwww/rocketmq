@@ -218,6 +218,7 @@ public class RouteInfoManager {
                     }
                 }
 
+                //从broker注册，需要返回主broker地址信息
                 if (MixAll.MASTER_ID != brokerId) {
                     String masterAddr = brokerData.getBrokerAddrs().get(MixAll.MASTER_ID);
                     if (masterAddr != null) {
@@ -822,9 +823,21 @@ public class RouteInfoManager {
 }
 
 class BrokerLiveInfo {
+    /**
+     * 最近一次心跳时间
+     */
     private long lastUpdateTimestamp;
+    /**
+     * 版本信息
+     */
     private DataVersion dataVersion;
+    /**
+     * broker和NameServer链接的网络通道，broker下线时将关闭该通道
+     */
     private Channel channel;
+    /**
+     * slave同步消息的地址
+     */
     private String haServerAddr;
 
     public BrokerLiveInfo(long lastUpdateTimestamp, DataVersion dataVersion, Channel channel,

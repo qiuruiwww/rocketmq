@@ -28,12 +28,17 @@ public class BrokerData implements Comparable<BrokerData> {
      * 所属集群
      */
     private String cluster;
+    /**
+     * broker名称
+     */
     private String brokerName;
     /**
-     * broker对应的地址集合
+     * broker对应的地址集合 brokerId：0为主  大于0为从
      */
     private HashMap<Long/* brokerId */, String/* broker address */> brokerAddrs;
-
+    /**
+     * 随机选择broker地址使用
+     */
     private final Random random = new Random();
 
     public BrokerData() {

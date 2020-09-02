@@ -51,7 +51,7 @@ public class BrokerConfig {
     private long brokerId = MixAll.MASTER_ID;
     //Broker权限 默认为6表示可读可写
     private int brokerPermission = PermName.PERM_READ | PermName.PERM_WRITE;
-    //主体在一个broker上创建队列数量
+    //topic在一个broker上创建队列数量
     private int defaultTopicQueueNums = 8;
     //是否自动创建topic信息
     @ImportantField

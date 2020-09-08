@@ -68,6 +68,10 @@ public class MQFaultStrategy {
      */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
         //判断故障延迟策略是否开启，默认不开启
+        //=====================================================================================================================
+        //=========故障延迟机制是解决一段时间内发送消息规避故障broker的方案，这段时间内可能会多次发送消息======================================
+        //=========未启用故障延迟机制的lastBrokerName是为了解决一次发送消息的过程中规避故障broker的方案，只在一次发送消息过程中有效==============
+        //=====================================================================================================================
         if (this.sendLatencyFaultEnable) {
             try {
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
